@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import type { JavaInfo } from '../shared/types'
+import type { DownloadSource, JavaInfo } from '../shared/types'
 import { MOJANG } from '../shared/constants'
 import { dataDir, ensureDir, runtimeDir } from './paths'
 import { Downloader } from './download'
@@ -111,8 +111,11 @@ export async function describeJava(javaHome: string, source: JavaInfo['source'])
     const specMatch = /java\.specification\.version\s*=\s*([^\s]+)/.exec(text)
     if (!versionMatch) throw new Error('无法解析 java -version 输出')
     const version = versionMatch[1]
-    let major = Number(specMatch?.[1] ?? version.split('.')[0])
-    if (major === 1 && version.startsWith('1.')) major = Number(version.split('.')[1])
+    const spec = specMatch?.[1]
+    // Java 8 reports `java.specification.version = 1.8`, newer JDKs report 17/21.
+    const major = /^1\.\d+$/.test(spec ?? '')
+      ? Number((spec as string).split('.')[1])
+      : Number((spec ?? version).split('.')[0])
     if (!Number.isFinite(major)) throw new Error('无法解析 Java 主版本')
     const info: JavaInfo = { path: javaHome, version, major, source }
     versionCache.set(javaHome, info)
@@ -193,7 +196,10 @@ function platformKey(): string {
 export class JavaService {
   private downloading: Promise<JavaInfo> | null = null
 
-  constructor(private readonly getConcurrency: () => number) {}
+  constructor(
+    private readonly getConcurrency: () => number,
+    private readonly getSource: () => DownloadSource = () => 'official',
+  ) {}
 
   async ensure(
     requiredMajor: number,
@@ -233,7 +239,8 @@ export class JavaService {
   }
 
   private async doDownload(component: string, signal?: AbortSignal, expectMajor?: number): Promise<JavaInfo> {
-    const all = await getJson<Record<string, Record<string, RuntimeManifestEntry[]>>>(MOJANG.javaRuntimeAll)
+    const source = this.getSource()
+    const all = await getJson<Record<string, Record<string, RuntimeManifestEntry[]>>>(MOJANG.javaRuntimeAll, { source })
     const key = platformKey()
     const platform = all[key] ?? all.linux ?? all['windows-x64']
     if (!platform) throw new Error('无法获取 Java 运行时清单')
@@ -249,7 +256,7 @@ export class JavaService {
     }
     if (!entry) throw new Error(`当前平台没有可用的 Java 运行时：${component}`)
 
-    const manifest = await getJson<RuntimeManifest>(entry.manifest.url)
+    const manifest = await getJson<RuntimeManifest>(entry.manifest.url, { source })
     const root = path.join(runtimeDir(), component)
     ensureDir(root)
 
@@ -270,7 +277,7 @@ export class JavaService {
 
     const downloader = new Downloader({
       concurrency: Math.max(4, this.getConcurrency()),
-      source: 'official',
+      source,
       signal,
     })
     await downloader.run(downloads)

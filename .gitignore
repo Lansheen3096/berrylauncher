@@ -15,3 +15,7 @@ release/
 .builder-cache/
 .npm-install.log
 .electron-dev*.log
+.mirror-data/
+.home-mirror/
+.chromium-mirror/
+.tmpjre/

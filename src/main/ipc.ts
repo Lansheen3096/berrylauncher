@@ -24,7 +24,10 @@ function broadcast(channel: string, payload: unknown): void {
 }
 
 const versions = new VersionService(settings)
-const javaService = new JavaService(() => settings.get().concurrency)
+const javaService = new JavaService(
+  () => settings.get().concurrency,
+  () => settings.get().downloadSource,
+)
 const loaders = new LoaderService(versions, settings, javaService)
 const accounts = new AccountService(settings)
 const launchService = new LaunchService(versions, settings, javaService, (channel, payload) =>

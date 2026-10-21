@@ -26,6 +26,8 @@ const HOST_MIRRORS: [string, string][] = [
   ['https://resources.download.minecraft.net/', `${BMCLAPI}/assets/`],
   ['https://piston-meta.mojang.com/', `${BMCLAPI}/`],
   ['https://piston-data.mojang.com/', `${BMCLAPI}/`],
+  ['https://launchermeta.mojang.com/', `${BMCLAPI}/`],
+  ['https://launcher.mojang.com/', `${BMCLAPI}/`],
   ['https://meta.fabricmc.net/', `${BMCLAPI}/fabric-meta/`],
   ['https://meta.quiltmc.org/', `${BMCLAPI}/quilt-meta/`],
 ]
@@ -96,11 +98,12 @@ export async function request(url: string, opts: FetchOptions = {}): Promise<Res
         signal: controller.signal,
       })
       if (res.ok) return res
-      if (res.status === 404) throw new HttpError(res.status, target, `未找到资源: ${target}`)
-      if (res.status < 500 && res.status !== 429) {
-        throw new HttpError(res.status, target)
-      }
       lastError = new HttpError(res.status, target)
+      // A definitive client error on the original host is final. On a mirror
+      // we still fall back to the origin below.
+      if (target === url && res.status < 500 && res.status !== 429) {
+        throw lastError
+      }
     } catch (err) {
       if (opts.signal?.aborted) throw new DOMException('Aborted', 'AbortError')
       if (err instanceof HttpError && err.status !== 429 && err.status < 500) throw err
@@ -110,6 +113,10 @@ export async function request(url: string, opts: FetchOptions = {}): Promise<Res
       opts.signal?.removeEventListener('abort', onAbort)
     }
     if (attempt < retries) await sleep(400 * Math.pow(2, attempt) + Math.random() * 300)
+  }
+  if (target !== url) {
+    log.warn('mirror request failed, falling back to origin', target, lastError)
+    return request(url, { ...opts, source: undefined, retries: 1 })
   }
   log.warn('request failed', target, lastError)
   throw lastError instanceof Error ? lastError : new Error(`请求失败: ${target}`)

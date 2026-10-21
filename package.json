@@ -19,7 +19,8 @@
     "e2e": "node scripts/e2e.mjs",
     "dist:win:native": "npm run build && electron-builder --win --x64",
     "dist:win:installer": "npm run build && electron-builder --win nsis --x64",
-    "screenshots": "node scripts/screenshots.mjs"
+    "screenshots": "node scripts/screenshots.mjs",
+    "mirror-check": "node scripts/mirror-check.mjs"
   },
   "dependencies": {
     "adm-zip": "^0.5.16"
