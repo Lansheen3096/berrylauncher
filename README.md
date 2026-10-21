@@ -1,0 +1,215 @@
+<div align="center">
+
+<img src="build/icon.png" width="104" alt="BerryLauncher icon" />
+
+# BerryLauncher · 甜浆果启动器
+
+**辽宁科技大学「甜浆果像素同好会」开源的 Minecraft 启动器**
+
+原生支持 Minecraft 全版本与 Fabric / Quilt / Forge / NeoForge，绿色主题、离线即用、无广告无捆绑。
+
+[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0--or--later-3ddc84.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-2f8f5b.svg)](#平台支持)
+[![Electron](https://img.shields.io/badge/Electron-38-47848F.svg)](https://www.electronjs.org/)
+
+</div>
+
+---
+
+## 这是什么
+
+BerryLauncher 是一个面向玩家、也面向同好会内部使用的 Minecraft 启动器：
+
+- **Windows 优先**：第一版以 Windows 10/11 x64 为主要目标，安装包开箱即用。
+- **跨平台架构**：主进程通过 `src/main/paths.ts` / 平台检测层隔离系统差异，Linux 与 macOS 的打包已在路线图中。
+- **不参考 HMCL**：启动、安装、下载与 UI 逻辑均为独立实现。
+- **开源非商业**：GPL-3.0-or-later，不收集隐私、不注入广告、不捆绑第三方软件。
+
+## 功能
+
+### 游戏版本
+
+- 从 Mojang 官方清单拉取全部版本（正式版 / 快照 / 远古版本），支持搜索与分类浏览。
+- 一键安装原版客户端：版本 JSON、客户端 jar、依赖库、资源索引与数千个资源文件全部自动校验（SHA-1）。
+- 安装记录与文件校验可重复执行，损坏的文件会被重新下载。
+
+### 模组加载器
+
+| 加载器 | 安装方式 | 说明 |
+| --- | --- | --- |
+| Fabric | Fabric Meta 官方 profile | 轻量、更新快 |
+| Quilt | Quilt Meta 官方 profile | Fabric 生态分支 |
+| Forge | **官方安装器无头模式** | 覆盖 1.12.2 至最新版本 |
+| NeoForge | **官方安装器无头模式** | 1.20.2+ 的新式加载器 |
+
+Forge / NeoForge 使用官方 installer 的 `--installClient` 无头模式，自动补齐处理器、映射与依赖，避免自行复刻 Forge 的处理器链导致版本兼容问题。
+
+### 启动与账户
+
+- 离线账户开箱即用（单人游戏 / 局域网）。
+- 微软账户：OAuth 2.0 设备码流程 → Xbox Live → XSTS → Minecraft Services，自动刷新令牌。
+- 每个实例独立存档、模组、资源包目录；共享 `libraries` / `assets`，不重复占用磁盘。
+- Java 自动检测（系统 JDK / Mojang 运行时），缺失时可一键下载 Java 8 / 17 / 21。
+- 实时启动日志、退出码提示、进程树停止（Windows 下 `taskkill /T`）。
+
+### 体验
+
+- 默认森林绿主题，可在设置中切换任意强调色与深/浅色模式。
+- 官方源 / BMCLAPI 镜像一键切换（国内下载加速）。
+- 并发下载、速度与进度展示、任务取消。
+- 版本库、实例、下载、设置四个主页面与账户/安装对话框，全部零外部 UI 框架手写样式。
+
+## 截图
+
+> 截图来自 Linux 开发环境；Windows 下布局一致，窗口边框由系统绘制。
+
+| 主页 | 版本库 |
+| --- | --- |
+| ![主页](docs/screenshots/home.png) | ![版本库](docs/screenshots/browse.png) |
+
+| 安装加载器 | 实例 |
+| --- | --- |
+| ![安装](docs/screenshots/install.png) | ![实例](docs/screenshots/instances.png) |
+
+| 下载任务 | 设置 |
+| --- | --- |
+| ![下载](docs/screenshots/downloads.png) | ![设置](docs/screenshots/settings.png) |
+
+## 快速开始（开发）
+
+要求：Node.js ≥ 20、npm ≥ 10，以及一个可用的桌面会话。
+
+```bash
+git clone https://github.com/USTL-SweetBerry/berrylauncher.git
+cd berrylauncher
+npm install
+npm run dev          # Vite + Electron 热更新
+```
+
+只想跑构建产物：
+
+```bash
+npm run build
+npx electron .       # 或 npm start
+```
+
+> 若 `npm install` 阶段跳过了 Electron 的二进制下载（npm 的 install-scripts 策略），
+> 执行 `node node_modules/electron/install.js`，或设置
+> `electron_config_cache` 指向可写目录后重试。
+
+### 目录结构
+
+```
+src/
+  main/                 Electron 主进程
+    services/           由 ipc.ts 组装的核心服务
+    versions.ts         版本清单、原版安装、继承链合并、natives 提取
+    loaders.ts          Fabric/Quilt/Forge/NeoForge 列表与安装
+    launch.ts           参数展开、classpath、进程与日志
+    accounts.ts         离线 UUID、微软设备码登录与刷新
+    download.ts         并发下载器（重试 / SHA-1 / 进度）
+    java.ts             运行时探测与 Mojang JRE 下载
+  preload/              contextBridge，类型化 IPC 桥
+  renderer/             React UI（无 UI 框架，手写 CSS 设计系统）
+  shared/               主进程与渲染进程共享的类型与常量
+scripts/                dev 编排、图标生成、端到端冒烟测试
+```
+
+数据目录（默认）：
+
+| 平台 | 位置 |
+| --- | --- |
+| Windows | `%APPDATA%\BerryLauncher` |
+| Linux | `~/.config/BerryLauncher` |
+| macOS | `~/Library/Application Support/BerryLauncher` |
+
+其中 `minecraft/` 为游戏数据根目录（`versions/`、`libraries/`、`assets/`、`instances/<id>/`），
+`runtime/` 为下载的 Java，`logs/` 为启动器与游戏日志。
+
+可用环境变量 `BERRY_DATA_DIR` 覆盖数据目录，方便做便携版或测试隔离。
+
+## 构建 Windows 安装包
+
+```bash
+# 任意平台：免安装 zip（解压后运行 BerryLauncher.exe）
+npm run dist:win
+
+# Windows / 装有 Wine 的环境：NSIS 安装包
+npm run dist:win:installer
+
+# Windows CI：安装包 + zip（自动写入 exe 图标与版本信息）
+npm run dist:win:native
+```
+
+产物在 `release/`。在 Linux 上交叉构建时，`win.signAndEditExecutable=false` 会跳过
+rcedit（因此 exe 使用 Electron 默认图标），安装包（NSIS）需要 Wine 才能生成；
+仓库内的 GitHub Actions 工作流在 `windows-latest` 上产出带完整图标的安装包。
+
+Linux 构建：`npm run dist:linux`（AppImage）。
+
+### 平台支持
+
+| 平台 | 状态 | 说明 |
+| --- | --- | --- |
+| Windows 10/11 x64 | ✅ 第一优先 | 已产出免安装 zip（`release/`）；Windows 专属路径、进程树停止、无控制台启动已实现，但**尚未在 Windows 真机上运行验证** |
+| Linux x64 | ✅ 开发可用 | 已在 Arch Linux 跑通安装、启动、Forge 安装与 BootstrapLauncher 加载（软件渲染环境） |
+| macOS | 🚧 代码就绪、未验证 | 已提供 dmg 配置，需要真机验证 Java 与窗口行为 |
+
+## 微软登录配置
+
+启动器不内置任何 Azure 应用凭据。想使用正版登录，需要自己注册一个免费应用（约两分钟）：
+
+1. 打开 [Azure 门户 → 应用注册](https://portal.azure.com/#view/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/~/RegisteredApps)，新建注册。
+2. 账户类型选择「仅个人 Microsoft 账户」或「任何组织目录 + 个人账户」，重定向 URI 选「公共客户端/本机」。
+3. 在「身份验证」中启用 **允许公共客户端流**。
+4. 复制「应用程序(客户端) ID」，填入 设置 → 账户与登录 → 微软登录 Client ID。
+5. 回到账户对话框，点「开始微软登录」，按提示在浏览器输入设备码。
+
+Client ID 不是密钥，可安全保存在本地配置文件中；令牌仅存于 `accounts.json`（权限 0600），不经过任何第三方服务器。
+
+> 离线账户无需任何配置，安装完版本即可启动。
+
+## 已知限制
+
+- Windows 包在 Linux 上交叉构建，尚未在 Windows 真机冒烟；首次发布前建议在 Windows 10/11 上跑一遍安装与启动。
+- 远古版本（1.5 及更早）使用旧资源索引，当前会给出明确提示而不是静默失败。
+- 微软登录依赖用户自备 Client ID。
+- 暂无模组市场 / 整合包导入 / 自动更新；这些在路线图中。
+- 安装 Forge / NeoForge 时耗时取决于官方安装器与网络，界面会实时显示安装器输出摘要。
+
+## 路线图
+
+- [ ] macOS / Linux 正式安装包与签名
+- [ ] Modrinth / CurseForge 模组与整合包浏览
+- [ ] 实例导入导出（`.mrpack`）、模组更新检查
+- [ ] 自动更新与增量下载
+- [ ] 多语言（当前为简体中文）
+- [ ] 皮肤预览与正版服务器状态
+
+## 参与贡献
+
+欢迎同好会的同学提 Issue / PR。提交前请至少跑通：
+
+```bash
+npm run typecheck
+npm run build
+```
+
+涉及启动链路的改动，建议再跑一次端到端冒烟（会真实下载并启动游戏，需图形会话）：
+
+```bash
+npm run e2e
+# 复用已下载数据并额外安装 Forge：
+BERRY_E2E_DATA=./.e2e-data BERRY_E2E_FORGE=1 npm run e2e
+```
+
+## 声明
+
+- 本项目由 **辽宁科技大学 甜浆果像素同好会（USTL Sweet Berry Pixel Club）** 发起并维护。
+- 与 Mojang Studios、Microsoft 无隶属或背书关系；Minecraft 是 Mojang 的商标。
+- 启动器不附带、不分发任何游戏本体或模组文件，所有内容均从官方/作者提供的地址下载。
+- Forge / NeoForge 安装器版权归其作者所有；请尊重上游项目的下载与赞助说明。
+
+## 许可证
+
+[GPL-3.0-or-later](LICENSE) © 2026 USTL Sweet Berry Pixel Club

@@ -1,0 +1,44 @@
+appId: club.ustl.berrylauncher
+productName: BerryLauncher
+copyright: Copyright © 2026 USTL Sweet Berry Pixel Club
+directories:
+  output: release
+  buildResources: build
+files:
+  - dist/**/*
+  - package.json
+  - build/icon.png
+asar: true
+compression: normal
+win:
+  icon: build/icon.ico
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: zip
+      arch: [x64]
+  # On Windows CI the exe icon/version resource is embedded normally.
+  # When cross-building from Linux, pass -c.win.signAndEditExecutable=false
+  # to skip rcedit.exe (which needs Wine); see package.json scripts.
+nsis:
+  oneClick: false
+  perMachine: false
+  allowElevation: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: 甜浆果启动器
+  artifactName: BerryLauncher-${version}-setup.${ext}
+  deleteAppDataOnUninstall: false
+linux:
+  icon: build/icon.png
+  category: Game
+  target:
+    - target: AppImage
+      arch: [x64]
+mac:
+  icon: build/icon.png
+  category: public.app-category.games
+  target:
+    - target: dmg
+      arch: [x64, arm64]

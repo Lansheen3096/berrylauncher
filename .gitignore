@@ -1,0 +1,17 @@
+node_modules/
+dist/
+release/
+.npm-cache/
+.electron-cache/
+.probe/
+*.log
+.DS_Store
+.devdata/
+.e2e-data/
+.shots/
+.home/
+.chromium*/
+.chromium-e2e/
+.builder-cache/
+.npm-install.log
+.electron-dev*.log
