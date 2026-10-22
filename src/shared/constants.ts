@@ -2,7 +2,7 @@ import type { LoaderKind } from './types'
 
 export const APP_NAME = 'BerryLauncher'
 export const APP_NAME_CN = '甜浆果启动器'
-export const APP_VERSION = '0.2.0'
+export const APP_VERSION = '0.2.1'
 export const CLUB_NAME = '辽宁科技大学 甜浆果像素同好会'
 export const CLUB_NAME_SHORT = 'USTL Sweet Berry Pixel Club'
 export const APP_ID = 'club.ustl.berrylauncher'

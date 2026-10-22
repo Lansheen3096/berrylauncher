@@ -27,11 +27,12 @@ export function AccountDialog({ onClose }: { onClose: () => void }) {
 
   const clientId = settings?.msClientId ?? ''
   useEffect(() => {
+    if (tab !== 'authlib' || servers.length > 0) return
     void api.authlib.servers().then((list) => {
       setServers(list)
       if (list[0]) setServer(list[0].url)
     })
-  }, [])
+  }, [tab, servers.length])
   const closeRef = useRef(onClose)
   useEffect(() => {
     closeRef.current = onClose

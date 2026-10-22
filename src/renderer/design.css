@@ -199,6 +199,7 @@ html[data-mode='light'] .nav-item:hover {
   border-radius: 12px;
   background: var(--surface);
   border-color: var(--line);
+  transition-duration: 0.1s;
 }
 
 .account-card:hover {
@@ -882,11 +883,13 @@ html[data-mode='light'] .nav-item:hover {
 /* ---------------- modal & forms ---------------- */
 
 .modal-layer {
-  background: rgba(4, 8, 5, 0.66);
-  backdrop-filter: blur(4px);
+  background: rgba(4, 8, 5, 0.6);
+  backdrop-filter: none;
+  animation-duration: 0.12s;
 }
 
 .modal {
+  animation-duration: 0.12s;
   border-radius: 18px;
   border-color: var(--line-strong);
   background: var(--surface);

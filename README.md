@@ -10,7 +10,7 @@
 
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0--or--later-3ddc84.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-2f8f5b.svg)](#平台支持)
-[![Electron](https://img.shields.io/badge/Electron-38-47848F.svg)](https://www.electronjs.org/)
+[![Electron](https://img.shields.io/badge/Electron-44-47848F.svg)](https://www.electronjs.org/)
 
 </div>
 
@@ -70,6 +70,7 @@ Forge / NeoForge 使用官方 installer 的 `--installClient` 无头模式，自
 
 - 设计语言 v2「静林」：纯色平面 + 凸起控件、固定森林绿、深浅色模式，规范见 [docs/DESIGN.md](docs/DESIGN.md)。
 - 启动日志改为内容区内的 dock：`peek` 状态条 / 展开 / 完全隐藏三态，不遮挡侧栏账户卡；标题栏终端图标可随时重新打开。
+- 支持含中文 / 非 ASCII 字符的安装路径与游戏目录；Electron 44 + Unicode classpath/参数测试。
 - 官方源 / BMCLAPI 镜像一键切换（国内下载加速）。
 - 并发下载、速度与进度展示、任务取消。
 - 版本库、资源库、实例、下载、设置、主页六个主页面，全部零外部 UI 框架手写样式。
