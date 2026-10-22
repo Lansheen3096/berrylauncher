@@ -23,3 +23,5 @@ release/
 .uidata/
 .lightdata/
 .uihome/
+
+.arch测试/
