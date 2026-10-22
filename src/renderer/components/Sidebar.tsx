@@ -1,4 +1,4 @@
-import { Boxes, DownloadCloud, Home, LibraryBig, Settings, UserRound } from 'lucide-react'
+import { Boxes, Compass, DownloadCloud, Home, LibraryBig, Settings, UserRound } from 'lucide-react'
 import { useStore, activeAccount } from '../lib/store'
 import { cx, percent } from '../lib/format'
 import { Spinner } from './ui'
@@ -7,6 +7,7 @@ import type { PageId } from '@shared/types'
 
 const NAV: { id: PageId; label: string; icon: typeof Home }[] = [
   { id: 'home', label: '主页', icon: Home },
+  { id: 'discover', label: '资源库', icon: Compass },
   { id: 'browse', label: '版本库', icon: LibraryBig },
   { id: 'instances', label: '实例', icon: Boxes },
   { id: 'downloads', label: '下载', icon: DownloadCloud },
@@ -57,7 +58,7 @@ export function Sidebar() {
             <span className="avatar">{account.name.slice(0, 1).toUpperCase()}</span>
             <span className="account-meta">
               <strong>{account.name}</strong>
-              <em>{account.type === 'microsoft' ? '微软账户' : '离线账户'}</em>
+              <em>{account.type === 'microsoft' ? '微软账户' : account.type === 'authlib' ? 'MUA 账户' : '离线账户'}</em>
             </span>
           </>
         ) : (

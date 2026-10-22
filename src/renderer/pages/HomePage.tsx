@@ -141,15 +141,44 @@ export function HomePage() {
           </div>
         </div>
 
-        <div className="hero-art" aria-hidden>
-          <div className="hero-ring ring-1" />
-          <div className="hero-ring ring-2" />
-          <BerryLogo size={168} className="hero-logo" />
-          <span className="float-block block-a" />
-          <span className="float-block block-b" />
-          <span className="float-block block-c" />
-          <span className="float-block block-d" />
+        {selected ? (
+        <div className="hero-side">
+          <div className="hero-side-brand">
+            <BerryLogo size={72} />
+          </div>
+          <dl className="hero-facts">
+            <div>
+              <dt>游戏版本</dt>
+              <dd>{selected.mcVersion}</dd>
+            </div>
+            <div>
+              <dt>加载器</dt>
+              <dd>{loaderLabel(selected.loader)}</dd>
+            </div>
+            <div>
+              <dt>模组</dt>
+              <dd>{selected.modCount ?? 0} 个</dd>
+            </div>
+            <div>
+              <dt>内存</dt>
+              <dd>{selected.settings.memoryMB ?? '默认'} MB</dd>
+            </div>
+          </dl>
         </div>
+        ) : (
+          <div className="hero-side hero-side-quiet">
+            <p className="hero-side-title">快速开始</p>
+            <Button variant="secondary" size="sm" block onClick={() => setPage('browse')}>
+              安装游戏版本
+            </Button>
+            <Button variant="secondary" size="sm" block onClick={() => setPage('discover')}>
+              浏览模组与整合包
+            </Button>
+            <Button variant="ghost" size="sm" block onClick={() => openModal({ type: 'account' })}>
+              添加账户
+            </Button>
+          </div>
+        )}
       </section>
 
       <div className="stats-row">

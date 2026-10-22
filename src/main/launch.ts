@@ -9,12 +9,14 @@ import type { VersionService } from './versions'
 import { isNativeLibrary, libraryArtifact, libraryKey, rulesAllow } from './versions'
 import type { JavaService } from './java'
 import { readMeta, writeMeta } from './instances'
+import { authlibInjector } from './authlib'
 import { log } from './logger'
 
 interface Session {
   account: Account
   accessToken: string
   userType: 'msa' | 'legacy'
+  authlibServer?: string
 }
 
 interface Substitutions {
@@ -147,6 +149,11 @@ export class LaunchService {
         ? [`-Djava.library.path=${nativesDir}`, '-cp', classpath.join(separator)]
         : jvmFromJson),
     ]
+
+    if (session.authlibServer) {
+      const jar = await authlibInjector.ensureJar()
+      jvmArgs.push(`-javaagent:${jar}=${session.authlibServer}`)
+    }
 
     const extraJvm = (instanceSettings.jvmArgs ?? settings.jvmArgs ?? '').trim()
     if (extraJvm) jvmArgs.push(...extraJvm.split(/\s+/))

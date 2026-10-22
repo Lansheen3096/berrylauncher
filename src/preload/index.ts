@@ -68,6 +68,24 @@ const api: BerryAPI = {
   tasks: {
     list: () => call('tasks:list'),
   },
+  modrinth: {
+    search: (query) => call('modrinth:search', query),
+    versions: (projectId, gameVersion, loader) => call('modrinth:versions', projectId, gameVersion, loader),
+  },
+  mods: {
+    list: (instanceId) => call('mods:list', instanceId),
+    install: (instanceId, versionId, withDependencies) => call('mods:install', instanceId, versionId, withDependencies),
+    toggle: (instanceId, file) => call('mods:toggle', instanceId, file),
+    remove: (instanceId, file) => call('mods:remove', instanceId, file),
+  },
+  modpacks: {
+    install: (request) => call('modpacks:install', request),
+    importFile: () => call('modpacks:import-file'),
+  },
+  authlib: {
+    servers: () => call('authlib:servers'),
+    login: (request) => call('authlib:login', request),
+  },
   on: (channel, listener) => {
     if (!EVENT_CHANNELS.includes(channel)) {
       throw new Error(`不允许监听事件 ${String(channel)}`)

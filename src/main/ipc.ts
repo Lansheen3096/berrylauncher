@@ -1,7 +1,15 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import fs from 'node:fs'
 import path from 'node:path'
-import type { DeepPartial, InstallRequest, InstanceSettings, Settings } from '../shared/types'
+import type {
+  AuthlibLoginRequest,
+  DeepPartial,
+  InstallRequest,
+  InstanceSettings,
+  ModpackInstallRequest,
+  ModrinthSearchQuery,
+  Settings,
+} from '../shared/types'
 import { APP_VERSION } from '../shared/constants'
 import { settingsStore } from './settings'
 import { VersionService } from './versions'
@@ -13,6 +21,9 @@ import { InstallService } from './installer'
 import { taskManager } from './tasks'
 import { listInstances, deleteInstance, updateInstanceSettings, readMeta, writeMeta } from './instances'
 import { dataDir } from './paths'
+import { ModrinthService } from './modrinth'
+import { ModService } from './mods'
+import { ModpackService } from './modpacks'
 import { log } from './logger'
 
 const settings = settingsStore
@@ -29,6 +40,9 @@ const javaService = new JavaService(
   () => settings.get().downloadSource,
 )
 const loaders = new LoaderService(versions, settings, javaService)
+const modrinth = new ModrinthService()
+const mods = new ModService(settings, modrinth)
+const modpacks = new ModpackService(loaders, modrinth, settings)
 const accounts = new AccountService(settings)
 const launchService = new LaunchService(versions, settings, javaService, (channel, payload) =>
   broadcast(channel, payload),
@@ -176,6 +190,72 @@ export function registerIpc(): void {
   handle('accounts:set-active', (id: string) => accounts.setActive(id))
   handle('accounts:microsoft-start', () => accounts.startMicrosoft())
   handle('accounts:microsoft-poll', (deviceCode: string) => accounts.pollMicrosoft(deviceCode))
+
+  // ---------- modrinth / mods / modpacks ----------
+  handle('modrinth:search', (query: ModrinthSearchQuery) => modrinth.search(query))
+  handle('modrinth:versions', (projectId: string, gameVersion?: string, loader?: string) =>
+    modrinth.versions(projectId, gameVersion, loader),
+  )
+  handle('mods:list', (instanceId: string) => mods.list(instanceId))
+  handle('mods:install', async (instanceId: string, versionId: string, withDependencies?: boolean) => {
+    const task = taskManager.create('install', '安装模组', '解析依赖…')
+    try {
+      const result = await mods.install(instanceId, versionId, withDependencies !== false, task)
+      taskManager.finish(task.id, 'completed', {
+        detail: result.installed.length > 0 ? `已安装 ${result.installed.length} 个模组` : '没有需要安装的模组',
+        progress: 1,
+        resultId: instanceId,
+      })
+      broadcast('instances:changed', listInstances(versions))
+      return result
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      taskManager.finish(task.id, task.signal.aborted ? 'cancelled' : 'failed', { error: message })
+      throw err
+    }
+  })
+  handle('mods:toggle', (instanceId: string, file: string) => {
+    mods.toggle(instanceId, file)
+    broadcast('instances:changed', listInstances(versions))
+  })
+  handle('mods:remove', (instanceId: string, file: string) => {
+    mods.remove(instanceId, file)
+    broadcast('instances:changed', listInstances(versions))
+  })
+  handle('modpacks:install', async (request: ModpackInstallRequest) => {
+    const task = taskManager.create('install', '安装整合包', '准备中…')
+    try {
+      const id = await modpacks.install(request, task)
+      taskManager.finish(task.id, 'completed', { detail: '整合包安装完成', progress: 1, resultId: id })
+      broadcast('instances:changed', listInstances(versions))
+      return id
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      taskManager.finish(task.id, task.signal.aborted ? 'cancelled' : 'failed', { error: message })
+      throw err
+    }
+  })
+  handle('modpacks:import-file', async () => {
+    const result = await dialog.showOpenDialog({
+      title: '导入 Modrinth 整合包',
+      properties: ['openFile'],
+      filters: [{ name: 'Minecraft 整合包', extensions: ['mrpack', 'zip'] }],
+    })
+    if (result.canceled || !result.filePaths[0]) return null
+    const task = taskManager.create('install', '导入整合包', '准备中…')
+    try {
+      const id = await modpacks.importFile(result.filePaths[0], task)
+      taskManager.finish(task.id, 'completed', { detail: '整合包导入完成', progress: 1, resultId: id })
+      broadcast('instances:changed', listInstances(versions))
+      return id
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      taskManager.finish(task.id, task.signal.aborted ? 'cancelled' : 'failed', { error: message })
+      throw err
+    }
+  })
+  handle('authlib:servers', () => accounts.authlibServers())
+  handle('authlib:login', (request: AuthlibLoginRequest) => accounts.loginAuthlib(request))
 
   // ---------- java ----------
   handle('java:detect', () => detectJava(settings.get().javaPath))

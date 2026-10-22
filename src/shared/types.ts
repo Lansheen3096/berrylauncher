@@ -40,6 +40,15 @@ export interface InstanceSettings {
   fullscreen?: boolean
 }
 
+export interface ModpackInfo {
+  name: string
+  versionId: string
+  projectId?: string
+  source: 'modrinth' | 'file'
+  iconUrl?: string
+  summary?: string
+}
+
 export interface InstanceSummary {
   id: string
   name: string
@@ -53,9 +62,11 @@ export interface InstanceSummary {
   broken?: boolean
   /** Total size of the version folder in bytes (best effort). */
   size?: number
+  modCount?: number
+  pack?: ModpackInfo
 }
 
-export type AccountType = 'offline' | 'microsoft'
+export type AccountType = 'offline' | 'microsoft' | 'authlib'
 
 export interface Account {
   id: string
@@ -65,6 +76,107 @@ export interface Account {
   /** Epoch ms; only for Microsoft accounts. */
   expiresAt?: number
   skinUrl?: string
+  /** Yggdrasil / authlib-injector API root, e.g. MUA. */
+  authlibServer?: string
+}
+
+export interface AuthlibLoginRequest {
+  server: string
+  username: string
+  password: string
+}
+
+export interface AuthlibServerInfo {
+  url: string
+  name: string
+  registerUrl?: string
+}
+
+export interface ModrinthProject {
+  id: string
+  slug: string
+  title: string
+  description: string
+  iconUrl?: string
+  downloads: number
+  follows: number
+  categories: string[]
+  clientSide: string
+  serverSide: string
+  projectType: string
+  author?: string
+  versions?: string[]
+}
+
+export interface ModrinthSearchQuery {
+  query: string
+  projectType: 'mod' | 'modpack'
+  gameVersion?: string
+  loader?: string
+  category?: string
+  sort?: 'relevance' | 'downloads' | 'follows' | 'newest' | 'updated'
+  offset?: number
+  limit?: number
+}
+
+export interface ModrinthSearchResult {
+  hits: ModrinthProject[]
+  totalHits: number
+  offset: number
+  limit: number
+}
+
+export interface ModrinthFile {
+  filename: string
+  url: string
+  size: number
+  primary: boolean
+  hashes: { sha1?: string; sha512?: string }
+}
+
+export interface ModrinthDependency {
+  versionId?: string
+  projectId?: string
+  fileName?: string
+  dependencyType: 'required' | 'optional' | 'incompatible' | 'embedded'
+}
+
+export interface ModrinthVersion {
+  id: string
+  projectId: string
+  name: string
+  versionNumber: string
+  gameVersions: string[]
+  loaders: string[]
+  datePublished: string
+  downloads: number
+  files: ModrinthFile[]
+  dependencies: ModrinthDependency[]
+}
+
+export interface InstalledMod {
+  file: string
+  name: string
+  enabled: boolean
+  size: number
+  projectId?: string
+  versionId?: string
+  versionNumber?: string
+  title?: string
+  iconUrl?: string
+}
+
+export interface ModInstallResult {
+  installed: InstalledMod[]
+  skipped: string[]
+  instanceId: string
+}
+
+export interface ModpackInstallRequest {
+  projectId?: string
+  versionId?: string
+  filePath?: string
+  instanceName?: string
 }
 
 export interface AccountsState {
@@ -99,6 +211,8 @@ export interface Settings {
   jvmArgs: string
   /** Azure application (client) ID used by the Microsoft device-code flow. */
   msClientId: string
+  /** Open the log console automatically when a game starts. */
+  consoleAutoOpen: boolean
 }
 
 export type TaskKind = 'install' | 'java' | 'assets'
@@ -178,7 +292,7 @@ export interface EventMap {
   'navigate': { page: PageId }
 }
 
-export type PageId = 'home' | 'browse' | 'instances' | 'downloads' | 'settings'
+export type PageId = 'home' | 'browse' | 'instances' | 'downloads' | 'discover' | 'settings'
 
 export type IpcResult<T> = { ok: true; data: T } | { ok: false; error: string }
 
@@ -229,6 +343,24 @@ export interface BerryAPI {
   }
   tasks: {
     list(): Promise<TaskUpdate[]>
+  }
+  modrinth: {
+    search(query: ModrinthSearchQuery): Promise<ModrinthSearchResult>
+    versions(projectId: string, gameVersion?: string, loader?: string): Promise<ModrinthVersion[]>
+  }
+  mods: {
+    list(instanceId: string): Promise<InstalledMod[]>
+    install(instanceId: string, versionId: string, withDependencies?: boolean): Promise<ModInstallResult>
+    toggle(instanceId: string, file: string): Promise<void>
+    remove(instanceId: string, file: string): Promise<void>
+  }
+  modpacks: {
+    install(request: ModpackInstallRequest): Promise<string>
+    importFile(): Promise<string | null>
+  }
+  authlib: {
+    servers(): Promise<AuthlibServerInfo[]>
+    login(request: AuthlibLoginRequest): Promise<Account>
   }
   on<K extends keyof EventMap>(channel: K, listener: (payload: EventMap[K]) => void): () => void
 }

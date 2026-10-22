@@ -19,3 +19,7 @@ release/
 .home-mirror/
 .chromium-mirror/
 .tmpjre/
+.testdata/
+.uidata/
+.lightdata/
+.uihome/

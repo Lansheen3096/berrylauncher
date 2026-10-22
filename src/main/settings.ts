@@ -16,6 +16,7 @@ function defaults(): Settings {
     javaPath: '',
     jvmArgs: '',
     msClientId: '',
+    consoleAutoOpen: false,
   }
 }
 
@@ -33,6 +34,7 @@ function sanitize(input: Settings): Settings {
     msClientId: (input.msClientId ?? '').trim(),
     javaPath: (input.javaPath ?? '').trim(),
     jvmArgs: input.jvmArgs ?? '',
+    consoleAutoOpen: Boolean(input.consoleAutoOpen),
   }
 }
 

@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   AlertTriangle,
   Boxes,
   FolderOpen,
+  Package,
   Play,
   Plus,
   Settings2,
@@ -11,10 +12,123 @@ import {
 } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { api } from '../lib/api'
-import { Badge, Button, Card, EmptyState, Field, IconButton, Modal, Slider } from '../components/ui'
+import { Badge, Button, Card, EmptyState, Field, IconButton, Modal, Slider, Spinner } from '../components/ui'
 import { LOADER_COLORS } from '@shared/constants'
 import { clamp, formatBytes, formatRelative, loaderInitial, loaderLabel } from '../lib/format'
-import type { InstanceSummary } from '@shared/types'
+import type { InstalledMod, InstanceSummary } from '@shared/types'
+
+function ModsDialog({ instance, onClose }: { instance: InstanceSummary; onClose: () => void }) {
+  const toast = useStore((s) => s.toast)
+  const setPage = useStore((s) => s.setPage)
+  const [mods, setMods] = useState<InstalledMod[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const refresh = async () => {
+    setLoading(true)
+    try {
+      setMods(await api.mods.list(instance.id))
+    } catch (err) {
+      toast('error', '读取模组失败', err instanceof Error ? err.message : String(err))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void refresh()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [instance.id])
+
+  return (
+    <Modal
+      title="模组管理"
+      subtitle={`${instance.name} · ${instance.mcVersion} / ${loaderLabel(instance.loader)}`}
+      onClose={onClose}
+      size="lg"
+      footer={
+        <div className="install-foot">
+          <span className="muted-text">
+            {mods.filter((mod) => mod.enabled).length} 个启用 · {mods.length} 个文件
+          </span>
+          <div className="install-foot-actions">
+            <Button variant="ghost" onClick={onClose}>
+              关闭
+            </Button>
+            <Button
+              variant="primary"
+              icon={<Plus size={15} />}
+              onClick={() => {
+                onClose()
+                setPage('discover')
+              }}
+            >
+              去资源库添加
+            </Button>
+          </div>
+        </div>
+      }
+    >
+      {loading ? (
+        <div className="inline-loading">
+          <Spinner size={16} /> 正在读取模组…
+        </div>
+      ) : mods.length === 0 ? (
+        <div className="mods-dialog-empty">这个实例还没有模组。去资源库搜索并安装吧。</div>
+      ) : (
+        <div className="mods-list">
+          {mods.map((mod) => (
+            <div key={mod.file} className={`mod-row ${mod.enabled ? '' : 'disabled'}`}>
+              {mod.iconUrl ? (
+                <img className="mod-row-icon" src={mod.iconUrl} alt="" />
+              ) : (
+                <span className="mod-row-icon mod-icon-empty">
+                  <Package size={14} />
+                </span>
+              )}
+              <div className="mod-row-text">
+                <strong>{mod.title ?? mod.name}</strong>
+                <em>
+                  {mod.versionNumber ?? mod.file} · {(mod.size / 1024).toFixed(0)} KB
+                </em>
+              </div>
+              <div className="mod-row-actions">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={async () => {
+                    try {
+                      await api.mods.toggle(instance.id, mod.file)
+                      await refresh()
+                    } catch (err) {
+                      toast('error', '切换失败', err instanceof Error ? err.message : String(err))
+                    }
+                  }}
+                >
+                  {mod.enabled ? '禁用' : '启用'}
+                </Button>
+                <IconButton
+                  label="删除模组"
+                  tone="danger"
+                  onClick={async () => {
+                    try {
+                      await api.mods.remove(instance.id, mod.file)
+                      await refresh()
+                      toast('success', '模组已删除')
+                    } catch (err) {
+                      toast('error', '删除失败', err instanceof Error ? err.message : String(err))
+                    }
+                  }}
+                >
+                  <Trash2 size={15} />
+                </IconButton>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Modal>
+  )
+}
 
 function InstanceCard({ instance }: { instance: InstanceSummary }) {
   const play = useStore((s) => s.play)
@@ -24,6 +138,7 @@ function InstanceCard({ instance }: { instance: InstanceSummary }) {
   const toast = useStore((s) => s.toast)
   const [confirming, setConfirming] = useState(false)
   const [editing, setEditing] = useState(false)
+  const [modsOpen, setModsOpen] = useState(false)
   const [memory, setMemory] = useState(instance.settings.memoryMB ?? 0)
   const [jvmArgs, setJvmArgs] = useState(instance.settings.jvmArgs ?? '')
 
@@ -62,13 +177,16 @@ function InstanceCard({ instance }: { instance: InstanceSummary }) {
             </span>
           ) : instance.broken ? (
             <Badge tone="danger">配置损坏</Badge>
+          ) : instance.pack ? (
+            <Badge tone="accent">整合包</Badge>
           ) : null}
         </div>
 
         <div className="instance-meta">
+          {instance.pack ? <span className="pack-badge">{instance.pack.name} {instance.pack.versionId}</span> : null}
           <span>{formatRelative(instance.lastPlayedAt)}</span>
           <span className="dot" />
-          <span>{instance.size ? formatBytes(instance.size) : '—'}</span>
+          <span>{instance.modCount ? `${instance.modCount} 个模组` : instance.size && instance.size > 100_000 ? formatBytes(instance.size) : '—'}</span>
           {instance.settings.memoryMB ? (
             <>
               <span className="dot" />
@@ -87,6 +205,9 @@ function InstanceCard({ instance }: { instance: InstanceSummary }) {
             {running ? '停止' : '启动'}
           </Button>
           <div className="instance-actions-right">
+            <IconButton label="模组管理" onClick={() => setModsOpen(true)}>
+              <Package size={16} />
+            </IconButton>
             <IconButton label="打开实例目录" onClick={() => void api.instances.openFolder(instance.id).catch((e) => toast('error', '打开失败', String(e)))}>
               <FolderOpen size={16} />
             </IconButton>
@@ -99,6 +220,8 @@ function InstanceCard({ instance }: { instance: InstanceSummary }) {
           </div>
         </div>
       </Card>
+
+      {modsOpen ? <ModsDialog instance={instance} onClose={() => setModsOpen(false)} /> : null}
 
       {editing ? (
         <Modal

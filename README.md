@@ -6,7 +6,7 @@
 
 **辽宁科技大学「甜浆果像素同好会」开源的 Minecraft 启动器**
 
-原生支持 Minecraft 全版本与 Fabric / Quilt / Forge / NeoForge，绿色主题、离线即用、无广告无捆绑。
+原生支持 Minecraft 全版本与 Fabric / Quilt / Forge / NeoForge；内置 Modrinth 模组/整合包搜索、MUA 外置登录，绿色主题、离线即用、无广告无捆绑。
 
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0--or--later-3ddc84.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-2f8f5b.svg)](#平台支持)
@@ -44,36 +44,51 @@ BerryLauncher 是一个面向玩家、也面向同好会内部使用的 Minecraf
 
 Forge / NeoForge 使用官方 installer 的 `--installClient` 无头模式，自动补齐处理器、映射与依赖，避免自行复刻 Forge 的处理器链导致版本兼容问题。
 
+### 资源库（Modrinth）
+
+- 模组 / 整合包搜索：按 Minecraft 版本、加载器（Fabric / Quilt / Forge / NeoForge）、相关度 / 下载量 / 关注数筛选。
+- 一键安装到指定实例，自动解析 required 依赖、按实例版本与加载器校验，SHA-1 校验后写入 `mods/`。
+- 实例内模组管理：启用 / 禁用（`.jar` ↔ `.jar.disabled`）、删除、打开目录。
+- 支持导入本地 `.mrpack`，也支持从 Modrinth 直接安装整合包。
+
+### 整合包
+
+- 解析 `modrinth.index.json`，自动安装对应的 Minecraft 与加载器。
+- 下载 `files[]`（校验 SHA-1，跳过 `env.client = unsupported`），释放 `overrides/` 与 `client-overrides/`。
+- 实例卡片显示整合包名称与版本，保留独立的存档与模组目录。
+
 ### 启动与账户
 
 - 离线账户开箱即用（单人游戏 / 局域网）。
 - 微软账户：OAuth 2.0 设备码流程 → Xbox Live → XSTS → Minecraft Services，自动刷新令牌。
+- **MUA 高校联盟 / authlib-injector 外置登录**：用户名密码只用于向认证服务器换取令牌，不落盘；启动时自动注入 authlib-injector。
 - 每个实例独立存档、模组、资源包目录；共享 `libraries` / `assets`，不重复占用磁盘。
 - Java 自动检测（系统 JDK / Mojang 运行时），缺失时可一键下载 Java 8 / 17 / 21。
 - 实时启动日志、退出码提示、进程树停止（Windows 下 `taskkill /T`）。
 
 ### 体验
 
-- 默认森林绿主题，可在设置中切换任意强调色与深/浅色模式。
+- 设计语言 v2「静林」：纯色平面 + 凸起控件、固定森林绿、深浅色模式，规范见 [docs/DESIGN.md](docs/DESIGN.md)。
+- 启动日志改为内容区内的 dock：`peek` 状态条 / 展开 / 完全隐藏三态，不遮挡侧栏账户卡；标题栏终端图标可随时重新打开。
 - 官方源 / BMCLAPI 镜像一键切换（国内下载加速）。
 - 并发下载、速度与进度展示、任务取消。
-- 版本库、实例、下载、设置四个主页面与账户/安装对话框，全部零外部 UI 框架手写样式。
+- 版本库、资源库、实例、下载、设置、主页六个主页面，全部零外部 UI 框架手写样式。
 
 ## 截图
 
 > 截图来自 Linux 开发环境；Windows 下布局一致，窗口边框由系统绘制。
 
-| 主页 | 版本库 |
+| 主页 | 资源库 |
 | --- | --- |
-| ![主页](docs/screenshots/home.png) | ![版本库](docs/screenshots/browse.png) |
+| ![主页](docs/screenshots/home.png) | ![资源库](docs/screenshots/discover.png) |
 
-| 安装加载器 | 实例 |
+| 版本库 | 实例 |
 | --- | --- |
-| ![安装](docs/screenshots/install.png) | ![实例](docs/screenshots/instances.png) |
+| ![版本库](docs/screenshots/browse.png) | ![实例](docs/screenshots/instances.png) |
 
-| 下载任务 | 设置 |
+| 启动控制台 | 设置 |
 | --- | --- |
-| ![下载](docs/screenshots/downloads.png) | ![设置](docs/screenshots/settings.png) |
+| ![控制台](docs/screenshots/console.png) | ![设置](docs/screenshots/settings.png) |
 
 ## 快速开始（开发）
 
@@ -106,7 +121,11 @@ src/
     versions.ts         版本清单、原版安装、继承链合并、natives 提取
     loaders.ts          Fabric/Quilt/Forge/NeoForge 列表与安装
     launch.ts           参数展开、classpath、进程与日志
-    accounts.ts         离线 UUID、微软设备码登录与刷新
+    accounts.ts         离线 / 微软 / MUA 账户与令牌刷新
+    modrinth.ts         Modrinth 搜索、项目、版本与依赖
+    mods.ts             模组安装、启用/禁用、删除与本地索引
+    modpacks.ts         .mrpack 解析、整合包实例安装
+    authlib.ts          authlib-injector 下载与校验
     download.ts         并发下载器（重试 / SHA-1 / 进度）
     java.ts             运行时探测与 Mojang JRE 下载
   preload/              contextBridge，类型化 IPC 桥
@@ -151,7 +170,7 @@ Linux 构建：`npm run dist:linux`（AppImage）。
 
 | 平台 | 状态 | 说明 |
 | --- | --- | --- |
-| Windows 10/11 x64 | ✅ 第一优先 | 已产出免安装 zip（`release/`）；Windows 专属路径、进程树停止、无控制台启动已实现，但**尚未在 Windows 真机上运行验证** |
+| Windows 10/11 x64 | ✅ 第一优先 | 已产出免安装 zip（`release/`）；Windows 专属路径、进程树停止、无控制台启动已实现，群友 Windows 真机烟测已通过 |
 | Linux x64 | ✅ 开发可用 | 已在 Arch Linux 跑通安装、启动、Forge 安装与 BootstrapLauncher 加载（软件渲染环境） |
 | macOS | 🚧 代码就绪、未验证 | 已提供 dmg 配置，需要真机验证 Java 与窗口行为 |
 
@@ -172,6 +191,8 @@ Client ID 不是密钥，可安全保存在本地配置文件中；令牌仅存�
 ## 已知限制
 
 - Windows 包在 Linux 上交叉构建，尚未在 Windows 真机冒烟；首次发布前建议在 Windows 10/11 上跑一遍安装与启动。
+- CurseForge 在线搜索需要 API Key，当前只做 Modrinth 在线；本地导入目前支持 `.mrpack`，CurseForge zip 在路线图中。
+- MUA 登录需要真实账户；密码不会保存，但令牌会以 0600 权限写入 `accounts.json`。
 - 远古版本（1.5 及更早）使用旧资源索引，当前会给出明确提示而不是静默失败。
 - 微软登录依赖用户自备 Client ID。
 - 暂无模组市场 / 整合包导入 / 自动更新；这些在路线图中。
@@ -180,8 +201,12 @@ Client ID 不是密钥，可安全保存在本地配置文件中；令牌仅存�
 ## 路线图
 
 - [ ] macOS / Linux 正式安装包与签名
-- [ ] Modrinth / CurseForge 模组与整合包浏览
-- [ ] 实例导入导出（`.mrpack`）、模组更新检查
+- [x] Modrinth 模组搜索、安装与实例内管理
+- [x] Modrinth `.mrpack` 整合包在线安装 / 本地导入
+- [x] MUA 高校联盟外置登录
+- [ ] CurseForge 在线搜索（用户自备 API Key）与 CurseForge zip 导入
+- [ ] 模组更新检查、实例导出
+- [ ] 控制台日志搜索与高度拖拽
 - [ ] 自动更新与增量下载
 - [ ] 多语言（当前为简体中文）
 - [ ] 皮肤预览与正版服务器状态

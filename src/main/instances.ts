@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import type { InstanceSettings, InstanceSummary, LoaderKind, MojangVersionJson } from '../shared/types'
+import type { InstanceSettings, InstanceSummary, LoaderKind, ModpackInfo, MojangVersionJson } from '../shared/types'
 import { ensureDir, instanceDir, instancesDir, versionDir, versionJsonPath } from './paths'
 import { readJsonFile, writeFileAtomic } from './net'
 import type { VersionService } from './versions'
@@ -15,6 +15,7 @@ export interface InstanceMeta {
   lastPlayedAt?: number
   playTimeSec?: number
   settings: InstanceSettings
+  pack?: ModpackInfo
 }
 
 const META_FILE = 'berry.json'
@@ -129,6 +130,14 @@ export function listInstances(vs: VersionService): InstanceSummary[] {
       }
       return current?.id ?? id
     })()
+    let modCount = 0
+    try {
+      modCount = fs
+        .readdirSync(path.join(instanceDir(gameDir, id), 'mods'))
+        .filter((file) => file.endsWith('.jar') || file.endsWith('.jar.disabled')).length
+    } catch {
+      /* no mods dir */
+    }
     result.push({
       id,
       name: meta?.name ?? (id === chainRoot ? `Minecraft ${id}` : id),
@@ -141,6 +150,8 @@ export function listInstances(vs: VersionService): InstanceSummary[] {
       settings: meta?.settings ?? {},
       broken: !fs.existsSync(versionJsonPath(gameDir, id)),
       size: dirSize(versionDir(gameDir, id)),
+      modCount,
+      pack: meta?.pack,
     })
   }
   return result.sort((a, b) => (b.lastPlayedAt ?? b.createdAt) - (a.lastPlayedAt ?? a.createdAt))

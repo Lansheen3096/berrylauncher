@@ -2824,3 +2824,51 @@ html[data-mode='light'] .segmented {
     grid-template-columns: 1fr;
   }
 }
+
+
+.accent-fixed {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.accent-fixed .accent-swatch {
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent-line);
+}
+
+.no-instance-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.mods-dialog-empty {
+  padding: 26px 16px;
+  text-align: center;
+  color: var(--text-mute);
+  font-size: 12px;
+}
+
+.pack-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+
+.hero-side-quiet {
+  gap: 8px;
+  justify-content: center;
+}
+
+.hero-side-title {
+  margin: 0 0 2px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+}

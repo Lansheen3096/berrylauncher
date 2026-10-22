@@ -125,7 +125,7 @@ export function BrowsePage() {
                     </span>
                     <Button
                       size="sm"
-                      variant={installed ? 'secondary' : 'primary'}
+                      variant="secondary"
                       onClick={() => openModal({ type: 'install', version })}
                     >
                       {installed ? '添加加载器' : '安装'}

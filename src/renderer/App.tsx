@@ -10,6 +10,7 @@ import { ConsoleDrawer } from './components/ConsoleDrawer'
 import { InstallDialog } from './components/InstallDialog'
 import { AccountDialog } from './components/AccountDialog'
 import { HomePage } from './pages/HomePage'
+import { DiscoverPage } from './pages/DiscoverPage'
 import { BrowsePage } from './pages/BrowsePage'
 import { InstancesPage } from './pages/InstancesPage'
 import { DownloadsPage } from './pages/DownloadsPage'
@@ -105,16 +106,19 @@ export default function App() {
       <TitleBar />
       <div className="app-body">
         <Sidebar />
-        <main className="content" key={page}>
-          {page === 'home' ? <HomePage /> : null}
-          {page === 'browse' ? <BrowsePage /> : null}
-          {page === 'instances' ? <InstancesPage /> : null}
-          {page === 'downloads' ? <DownloadsPage /> : null}
-          {page === 'settings' ? <SettingsPage /> : null}
-        </main>
+        <div className="main-column">
+          <main className="content" key={page}>
+            {page === 'home' ? <HomePage /> : null}
+            {page === 'discover' ? <DiscoverPage /> : null}
+            {page === 'browse' ? <BrowsePage /> : null}
+            {page === 'instances' ? <InstancesPage /> : null}
+            {page === 'downloads' ? <DownloadsPage /> : null}
+            {page === 'settings' ? <SettingsPage /> : null}
+          </main>
+          <ConsoleDrawer />
+        </div>
       </div>
       <Toasts />
-      <ConsoleDrawer />
       {modal?.type === 'install' ? <InstallDialog version={modal.version} onClose={() => openModal(null)} /> : null}
       {modal?.type === 'account' ? <AccountDialog onClose={() => openModal(null)} /> : null}
     </div>

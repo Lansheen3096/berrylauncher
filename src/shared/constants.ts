@@ -2,7 +2,7 @@ import type { LoaderKind } from './types'
 
 export const APP_NAME = 'BerryLauncher'
 export const APP_NAME_CN = '甜浆果启动器'
-export const APP_VERSION = '0.1.0'
+export const APP_VERSION = '0.2.0'
 export const CLUB_NAME = '辽宁科技大学 甜浆果像素同好会'
 export const CLUB_NAME_SHORT = 'USTL Sweet Berry Pixel Club'
 export const APP_ID = 'club.ustl.berrylauncher'
@@ -46,6 +46,9 @@ export const FABRIC_META = 'https://meta.fabricmc.net'
 export const QUILT_META = 'https://meta.quiltmc.org'
 export const FORGE_MAVEN = 'https://maven.minecraftforge.net'
 export const NEOFORGE_MAVEN = 'https://maven.neoforged.net/releases'
+export const MODRINTH_API = 'https://api.modrinth.com/v2'
+export const MUA_API = 'https://skin.mualliance.ltd/api/yggdrasil'
+export const AUTHLIB_INJECTOR_META = 'https://authlib-injector.yushi.moe/artifact/latest.json'
 export const FABRIC_MAVEN = 'https://maven.fabricmc.net'
 
 export const DEFAULT_MEMORY = 4096

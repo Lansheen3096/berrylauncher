@@ -1,7 +1,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
-import type { Account, AccountsState, DeviceCodeInfo } from '../shared/types'
+import type { Account, AccountsState, AuthlibLoginRequest, AuthlibServerInfo, DeviceCodeInfo } from '../shared/types'
+import { MUA_API } from '../shared/constants'
 import { accountsFile, ensureDir } from './paths'
 import { readJsonFile, writeFileAtomic } from './net'
 import type { SettingsStore } from './settings'
@@ -10,6 +11,7 @@ import { log } from './logger'
 interface StoredAccount extends Account {
   accessToken?: string
   refreshToken?: string
+  clientToken?: string
 }
 
 interface StoreFile {
@@ -127,6 +129,7 @@ export class AccountService {
       uuid: account.uuid,
       expiresAt: account.expiresAt,
       skinUrl: account.skinUrl,
+      authlibServer: account.authlibServer,
     }
   }
 
@@ -171,6 +174,106 @@ export class AccountService {
     if (!state.accounts.some((a) => a.id === id)) throw new Error('账户不存在')
     state.activeId = id
     this.persist()
+  }
+
+  authlibServers(): AuthlibServerInfo[] {
+    return [
+      {
+        url: MUA_API,
+        name: 'MUA 高校联盟',
+        registerUrl: 'https://skin.mualliance.ltd/auth/register',
+      },
+    ]
+  }
+
+  async loginAuthlib(request: AuthlibLoginRequest): Promise<Account> {
+    const server = request.server.trim().replace(/\/+$/, '')
+    if (!/^https?:\/\//i.test(server)) throw new Error('认证服务器地址必须以 http(s):// 开头')
+    if (!server.startsWith('https://') && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(server)) {
+      throw new Error('为保证密码安全，外置登录只允许 HTTPS（本机调试除外）')
+    }
+    const username = request.username.trim()
+    if (!username || !request.password) throw new Error('请输入用户名和密码')
+
+    const clientToken = crypto.randomUUID()
+    let data: {
+      accessToken: string
+      clientToken?: string
+      selectedProfile?: { id: string; name: string }
+      availableProfiles?: { id: string; name: string }[]
+    }
+    try {
+      data = await postJson(`${server}/authserver/authenticate`, {
+        agent: { name: 'Minecraft', version: 1 },
+        username,
+        password: request.password,
+        clientToken,
+        requestUser: false,
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      if (/Invalid credentials|ForbiddenOperationException|用户名或密码错误/i.test(message)) {
+        throw new Error('用户名或密码错误，或该账户尚未完成邮箱验证')
+      }
+      throw new Error(`MUA 登录失败：${message}`)
+    }
+
+    const profile = data.selectedProfile ?? data.availableProfiles?.[0]
+    if (!profile) throw new Error('该账户还没有创建 Minecraft 角色，请先到皮肤站创建')
+    const skinUrl = await this.fetchYggdrasilSkin(server, profile.id)
+
+    const account: StoredAccount = {
+      id: profile.id,
+      type: 'authlib',
+      name: profile.name,
+      uuid: profile.id,
+      authlibServer: server,
+      accessToken: data.accessToken,
+      clientToken: data.clientToken ?? clientToken,
+      skinUrl,
+    }
+
+    const state = this.load()
+    const existing = state.accounts.findIndex((a) => a.id === account.id && a.authlibServer === server)
+    if (existing >= 0) state.accounts[existing] = account
+    else state.accounts.push(account)
+    state.activeId = account.id
+    this.persist()
+    log.info('authlib login ok', server, account.name)
+    return this.publicAccount(account)
+  }
+
+  private async fetchYggdrasilSkin(server: string, uuid: string): Promise<string | undefined> {
+    try {
+      const res = await fetch(`${server}/sessionserver/session/minecraft/profile/${uuid}`, {
+        headers: { 'User-Agent': 'BerryLauncher/0.2.0' },
+      })
+      if (!res.ok) return undefined
+      const data = (await res.json()) as {
+        properties?: { name: string; value: string }[]
+      }
+      const textures = data.properties?.find((p) => p.name === 'textures')
+      if (!textures) return undefined
+      const decoded = JSON.parse(Buffer.from(textures.value, 'base64').toString('utf8')) as {
+        textures?: { SKIN?: { url?: string } }
+      }
+      return decoded.textures?.SKIN?.url
+    } catch {
+      return undefined
+    }
+  }
+
+  private async validateAuthlib(server: string, accessToken: string, clientToken?: string): Promise<boolean> {
+    try {
+      const res = await fetch(`${server}/authserver/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'User-Agent': 'BerryLauncher/0.2.0' },
+        body: JSON.stringify({ accessToken, clientToken }),
+      })
+      return res.status === 204
+    } catch {
+      return false
+    }
   }
 
   async startMicrosoft(): Promise<DeviceCodeInfo> {
@@ -301,6 +404,7 @@ export class AccountService {
     account: Account
     accessToken: string
     userType: 'msa' | 'legacy'
+    authlibServer?: string
   }> {
     const state = this.load()
     const id = accountId ?? state.activeId
@@ -309,6 +413,41 @@ export class AccountService {
 
     if (account.type === 'offline') {
       return { account: this.publicAccount(account), accessToken: '0', userType: 'legacy' }
+    }
+
+    if (account.type === 'authlib') {
+      const server = account.authlibServer
+      if (!server || !account.accessToken) throw new Error('外置登录信息不完整，请重新登录')
+      if (await this.validateAuthlib(server, account.accessToken, account.clientToken)) {
+        return {
+          account: this.publicAccount(account),
+          accessToken: account.accessToken,
+          userType: 'legacy',
+          authlibServer: server,
+        }
+      }
+      try {
+        const refreshed = await postJson<{
+          accessToken: string
+          clientToken?: string
+          selectedProfile?: { id: string; name: string }
+        }>(`${server}/authserver/refresh`, {
+          accessToken: account.accessToken,
+          clientToken: account.clientToken,
+        })
+        account.accessToken = refreshed.accessToken
+        if (refreshed.clientToken) account.clientToken = refreshed.clientToken
+        this.persist()
+        return {
+          account: this.publicAccount(account),
+          accessToken: refreshed.accessToken,
+          userType: 'legacy',
+          authlibServer: server,
+        }
+      } catch (err) {
+        log.warn('authlib refresh failed', err)
+        throw new Error('MUA 登录已过期，请重新登录账户')
+      }
     }
 
     const stillValid = account.accessToken && account.expiresAt && account.expiresAt - 120_000 > Date.now()

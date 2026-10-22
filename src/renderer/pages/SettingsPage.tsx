@@ -16,8 +16,8 @@ import {
 import type { JavaInfo } from '@shared/types'
 import { useStore } from '../lib/store'
 import { api } from '../lib/api'
-import { ACCENT_PRESETS, APP_NAME_CN, CLUB_NAME, GITHUB_URL, MAX_MEMORY, MIN_MEMORY } from '@shared/constants'
-import { Badge, Button, Field, Segmented, Slider } from '../components/ui'
+import { APP_NAME_CN, CLUB_NAME, GITHUB_URL, MAX_MEMORY, MIN_MEMORY } from '@shared/constants'
+import { Badge, Button, Field, Segmented, Slider, Switch } from '../components/ui'
 import { BerryLogo } from '../components/BerryLogo'
 import { cx } from '../lib/format'
 
@@ -103,7 +103,7 @@ export function SettingsPage() {
         </Badge>
       </header>
 
-      <Section icon={<Palette size={19} />} title="外观" description="默认森林绿主题，随时可以换成你喜欢的主色。">
+      <Section icon={<Palette size={19} />} title="外观" description="固定森林绿与同一套控件，保证所有页面的一致性。">
         <Field label="主题模式">
           <Segmented
             value={settings.theme.mode}
@@ -115,27 +115,12 @@ export function SettingsPage() {
           />
         </Field>
 
-        <Field label="强调色" hint="选择预设或自定义任意颜色">
-          <div className="accent-row">
-            {ACCENT_PRESETS.map((preset) => (
-              <button
-                key={preset.color}
-                className={cx('accent-swatch', settings.theme.accent.toLowerCase() === preset.color.toLowerCase() && 'active')}
-                style={{ background: preset.color }}
-                title={preset.name}
-                onClick={() => void update({ theme: { accent: preset.color } })}
-              >
-                {settings.theme.accent.toLowerCase() === preset.color.toLowerCase() ? <Check size={14} /> : null}
-              </button>
-            ))}
-            <label className="accent-custom" title="自定义颜色">
-              <input
-                type="color"
-                value={settings.theme.accent}
-                onChange={(e) => void update({ theme: { accent: e.target.value } })}
-              />
-              <span>自定义</span>
-            </label>
+        <Field label="强调色" hint="固定森林绿，保证所有页面的一致性与可读性">
+          <div className="accent-fixed">
+            <span className="accent-swatch active" style={{ background: settings.theme.accent }}>
+              <Check size={14} />
+            </span>
+            <span>森林绿 · {settings.theme.accent.toUpperCase()}</span>
           </div>
         </Field>
 
@@ -191,6 +176,14 @@ export function SettingsPage() {
               { value: 'official', label: '官方源' },
               { value: 'bmclapi', label: 'BMCLAPI 镜像' },
             ]}
+          />
+        </Field>
+
+        <Field label="启动时展开控制台" hint="关闭时只在底部显示一条日志状态栏">
+          <Switch
+            checked={settings.consoleAutoOpen}
+            onChange={(value) => void update({ consoleAutoOpen: value })}
+            label="启动时展开控制台"
           />
         </Field>
 
@@ -278,7 +271,7 @@ export function SettingsPage() {
               <span className="avatar">{account.name.slice(0, 1).toUpperCase()}</span>
               <div className="account-row-text">
                 <strong>{account.name}</strong>
-                <em>{account.type === 'microsoft' ? '微软账户' : '离线账户'}</em>
+                <em>{account.type === 'microsoft' ? '微软账户' : account.type === 'authlib' ? 'MUA / 外置账户' : '离线账户'}</em>
               </div>
               <Button variant="secondary" size="sm" onClick={() => openModal({ type: 'account' })}>
                 管理账户

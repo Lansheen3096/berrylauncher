@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Check, Copy, ExternalLink, LogIn, ShieldCheck, Trash2, UserRound } from 'lucide-react'
-import type { DeviceCodeInfo } from '@shared/types'
+import type { AuthlibServerInfo, DeviceCodeInfo } from '@shared/types'
 import { useStore } from '../lib/store'
 import { api } from '../lib/api'
-import { Badge, Button, Field, Modal, Segmented } from './ui'
+import { Badge, Button, Field, Modal, Segmented, Select } from './ui'
 
 export function AccountDialog({ onClose }: { onClose: () => void }) {
   const settings = useStore((s) => s.settings)
@@ -11,7 +11,13 @@ export function AccountDialog({ onClose }: { onClose: () => void }) {
   const setPage = useStore((s) => s.setPage)
   const toast = useStore((s) => s.toast)
 
-  const [tab, setTab] = useState<'offline' | 'microsoft'>('offline')
+  const [tab, setTab] = useState<'offline' | 'microsoft' | 'authlib'>('offline')
+  const [servers, setServers] = useState<AuthlibServerInfo[]>([])
+  const [server, setServer] = useState('')
+  const [authlibUser, setAuthlibUser] = useState('')
+  const [authlibPassword, setAuthlibPassword] = useState('')
+  const [authlibLoading, setAuthlibLoading] = useState(false)
+  const [authlibError, setAuthlibError] = useState('')
   const [name, setName] = useState('')
   const [device, setDevice] = useState<DeviceCodeInfo | null>(null)
   const [starting, setStarting] = useState(false)
@@ -20,6 +26,12 @@ export function AccountDialog({ onClose }: { onClose: () => void }) {
   const [remaining, setRemaining] = useState(0)
 
   const clientId = settings?.msClientId ?? ''
+  useEffect(() => {
+    void api.authlib.servers().then((list) => {
+      setServers(list)
+      if (list[0]) setServer(list[0].url)
+    })
+  }, [])
   const closeRef = useRef(onClose)
   useEffect(() => {
     closeRef.current = onClose
@@ -67,6 +79,21 @@ export function AccountDialog({ onClose }: { onClose: () => void }) {
     }
   }
 
+  const loginAuthlib = async () => {
+    setAuthlibLoading(true)
+    setAuthlibError('')
+    try {
+      const account = await api.authlib.login({ server, username: authlibUser, password: authlibPassword })
+      toast('success', `欢迎，${account.name}`, 'MUA 认证成功')
+      setAuthlibPassword('')
+      closeRef.current()
+    } catch (err) {
+      setAuthlibError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setAuthlibLoading(false)
+    }
+  }
+
   const startMicrosoft = async () => {
     setStarting(true)
     setError('')
@@ -98,12 +125,61 @@ export function AccountDialog({ onClose }: { onClose: () => void }) {
         value={tab}
         onChange={setTab}
         options={[
-          { value: 'offline', label: '离线账户' },
-          { value: 'microsoft', label: '微软账户' },
+          { value: 'offline', label: '离线' },
+          { value: 'microsoft', label: '微软' },
+          { value: 'authlib', label: 'MUA / 外置' },
         ]}
       />
 
-      {tab === 'offline' ? (
+      {tab === 'authlib' ? (
+        <div className="account-form">
+          <Field label="认证服务器" hint="MUA 高校联盟，或任意 authlib-injector 兼容服务">
+            <Select
+              value={server}
+              onChange={setServer}
+              options={[
+                ...servers.map((item) => ({ value: item.url, label: `${item.name}（${new URL(item.url).host}）` })),
+                ...(server && !servers.some((item) => item.url === server) ? [{ value: server, label: server }] : []),
+              ]}
+            />
+          </Field>
+          <Field label="用户名" hint="通常是邮箱或用户名">
+            <input
+              className="input"
+              value={authlibUser}
+              onChange={(e) => setAuthlibUser(e.target.value)}
+              placeholder="you@example.com"
+              autoComplete="username"
+            />
+          </Field>
+          <Field label="密码" hint="只用于向认证服务器换取令牌，不会保存">
+            <input
+              className="input"
+              type="password"
+              value={authlibPassword}
+              onChange={(e) => setAuthlibPassword(e.target.value)}
+              placeholder="••••••••"
+              autoComplete="current-password"
+              onKeyDown={(e) => e.key === 'Enter' && void loginAuthlib()}
+            />
+          </Field>
+          {authlibError ? <p className="error-text">{authlibError}</p> : null}
+          {servers[0]?.registerUrl ? (
+            <Button variant="ghost" size="sm" icon={<ExternalLink size={14} />} onClick={() => void api.app.openExternal(servers[0].registerUrl!)}>
+              注册 MUA 账户
+            </Button>
+          ) : null}
+          <Button
+            variant="primary"
+            icon={<LogIn size={16} />}
+            loading={authlibLoading}
+            disabled={!server || !authlibUser || !authlibPassword}
+            onClick={() => void loginAuthlib()}
+          >
+            登录 MUA 账户
+          </Button>
+        </div>
+      ) : tab === 'offline' ? (
         <div className="account-form">
           <Field label="玩家名" hint="3–16 位字母、数字或下划线">
             <input
@@ -185,7 +261,7 @@ export function AccountDialog({ onClose }: { onClose: () => void }) {
               <span className="avatar">{account.name.slice(0, 1).toUpperCase()}</span>
               <div className="account-row-text">
                 <strong>{account.name}</strong>
-                <em>{account.type === 'microsoft' ? '微软账户' : '离线账户'}</em>
+                <em>{account.type === 'microsoft' ? '微软账户' : account.type === 'authlib' ? 'MUA / 外置账户' : '离线账户'}</em>
               </div>
               {account.id === accounts.activeId ? <Badge tone="accent">当前</Badge> : null}
               {account.id !== accounts.activeId ? (

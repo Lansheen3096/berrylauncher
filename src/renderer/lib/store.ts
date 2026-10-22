@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type {
   Account,
+  PageId,
   DeepPartial,
   AccountsState,
   AppInfo,
@@ -27,7 +28,7 @@ export interface Toast {
 
 interface State {
   ready: boolean
-  page: 'home' | 'browse' | 'instances' | 'downloads' | 'settings'
+  page: PageId
   info: AppInfo | null
   settings: Settings | null
   instances: InstanceSummary[]
@@ -36,7 +37,12 @@ interface State {
   remote: RemoteVersion[]
   remoteLoading: boolean
   selectedId: string | null
-  launch: { status: LaunchStatus | null; logs: string[]; open: boolean; versionId: string | null }
+  launch: {
+    status: LaunchStatus | null
+    logs: string[]
+    mode: 'hidden' | 'peek' | 'open'
+    versionId: string | null
+  }
   modal: ModalState
   toasts: Toast[]
 
@@ -52,7 +58,7 @@ interface State {
   play: (id?: string) => Promise<void>
   stop: (id: string) => Promise<void>
   removeInstance: (id: string) => Promise<void>
-  setLaunchOpen: (open: boolean) => void
+  setConsoleMode: (mode: 'hidden' | 'peek' | 'open') => void
   setLaunchStatus: (status: LaunchStatus) => void
   appendLogs: (lines: string[]) => void
   updateSettings: (patch: DeepPartial<Settings>) => Promise<void>
@@ -72,7 +78,7 @@ export const useStore = create<State>((set, get) => ({
   remote: [],
   remoteLoading: false,
   selectedId: null,
-  launch: { status: null, logs: [], open: false, versionId: null },
+  launch: { status: null, logs: [], mode: 'hidden', versionId: null },
   modal: null,
   toasts: [],
 
@@ -145,10 +151,15 @@ export const useStore = create<State>((set, get) => ({
       set({ modal: { type: 'account' } })
       return
     }
-    set({
-      launch: { status: null, logs: [], open: true, versionId: target },
+    set((state) => ({
+      launch: {
+        status: null,
+        logs: [],
+        mode: state.settings?.consoleAutoOpen ? 'open' : 'peek',
+        versionId: target,
+      },
       selectedId: target,
-    })
+    }))
     try {
       const status = await api.instances.launch(target)
       set((state) => ({ launch: { ...state.launch, status } }))
@@ -180,17 +191,15 @@ export const useStore = create<State>((set, get) => ({
     }
   },
 
-  setLaunchOpen: (open) => set((state) => ({ launch: { ...state.launch, open } })),
+  setConsoleMode: (mode) => set((state) => ({ launch: { ...state.launch, mode } })),
 
   setLaunchStatus: (status) =>
     set((state) => {
-      return {
-        launch: {
-          ...state.launch,
-          status,
-          open: status.state === 'running' || status.state === 'preparing' ? true : state.launch.open,
-        },
-      }
+      let mode = state.launch.mode
+      if (status.state === 'failed') mode = 'open'
+      else if (status.state === 'exited') mode = mode === 'hidden' ? 'hidden' : 'peek'
+      else if (status.state === 'preparing' && mode === 'hidden') mode = 'peek'
+      return { launch: { ...state.launch, status, mode } }
     }),
 
   appendLogs: (lines) =>
