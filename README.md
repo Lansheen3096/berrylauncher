@@ -49,6 +49,13 @@ Forge / NeoForge 使用官方 installer 的 `--installClient` 无头模式，自
 - 强调色压暗为森林绿 `#2B8F5C`，保留胶囊按钮和发丝描边，去掉荧光感
 - 应用图标、标题栏、启动画面、关于页统一为像素甜浆果原图
 
+### 版本管理
+
+- 已安装版本 / 实例列表：启动、停止、删除、打开目录、查看配置损坏状态
+- 实例设置：显示名称、内存、额外 JVM 参数；每个实例保留独立存档与模组目录
+- 模组管理：启用 / 禁用、删除、导出修改资源
+- 安装新版本后自动出现在「版本管理」，整合包实例带标识
+
 ### 版本隔离与资源实体库
 
 - 设置里的「版本隔离」开关默认开启：每个实例独立 `mods / saves / config`；关闭后共享根目录，整合包实例始终强制隔离。
@@ -96,7 +103,7 @@ Forge / NeoForge 使用官方 installer 的 `--installClient` 无头模式，自
 - 支持含中文 / 非 ASCII 字符的安装路径与游戏目录；Electron 44 + Unicode classpath/参数测试。
 - 官方源 / BMCLAPI 镜像一键切换（国内下载加速）。
 - 并发下载、速度与进度展示、任务取消。
-- 版本库、资源库、实例、下载、设置、主页六个主页面，全部零外部 UI 框架手写样式。
+- 版本库、资源库、版本管理、下载、设置、主页六个主页面，全部零外部 UI 框架手写样式。
 
 ## 截图
 
@@ -106,9 +113,9 @@ Forge / NeoForge 使用官方 installer 的 `--installClient` 无头模式，自
 | --- | --- |
 | ![主页](docs/screenshots/home.png) | ![资源库](docs/screenshots/discover.png) |
 
-| 版本库 | 实例 |
+| 版本库 | 版本管理 |
 | --- | --- |
-| ![版本库](docs/screenshots/browse.png) | ![实例](docs/screenshots/instances.png) |
+| ![版本库](docs/screenshots/browse.png) | ![版本管理](docs/screenshots/instances.png) |
 
 | 启动控制台 | 设置 |
 | --- | --- |
@@ -236,7 +243,7 @@ Client ID 不是密钥，可安全保存在本地配置文件中；令牌仅存�
 - [x] Modrinth `.mrpack` 整合包在线安装 / 本地导入
 - [x] MUA 高校联盟外置登录
 - [ ] CurseForge 在线搜索（用户自备 API Key）与 CurseForge zip 导入
-- [ ] 模组更新检查、实例导出
+- [ ] 模组更新检查、实例导出 / 复制
 - [ ] 控制台日志搜索与高度拖拽
 - [x] 版本隔离、资源实体库与自动瘦身
 - [x] 游玩时长统计（实例 / MC 版本 / 总计）

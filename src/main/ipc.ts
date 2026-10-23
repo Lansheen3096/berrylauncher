@@ -201,6 +201,16 @@ export function registerIpc(): void {
     resources.gc()
     broadcast('instances:changed', listInstances(versions))
   })
+  handle('instances:rename', (id: string, name: string) => {
+    const clean = requireString(name, 'name').trim()
+    if (!clean) throw new Error('名称不能为空')
+    if (clean.length > 60) throw new Error('名称不能超过 60 个字符')
+    const gameDir = settings.get().gameDir
+    const meta = readMeta(gameDir, id)
+    if (!meta) throw new Error('实例不存在')
+    writeMeta(gameDir, { ...meta, name: clean })
+    broadcast('instances:changed', listInstances(versions))
+  })
   handle('instances:open-folder', async (id: string) => {
     const gameDir = settings.get().gameDir
     const meta = readMeta(gameDir, id)

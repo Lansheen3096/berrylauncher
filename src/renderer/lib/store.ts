@@ -58,6 +58,7 @@ interface State {
   play: (id?: string) => Promise<void>
   stop: (id: string) => Promise<void>
   removeInstance: (id: string) => Promise<void>
+  renameInstance: (id: string, name: string) => Promise<void>
   setConsoleMode: (mode: 'hidden' | 'peek' | 'open') => void
   setLaunchStatus: (status: LaunchStatus) => void
   appendLogs: (lines: string[]) => void
@@ -179,6 +180,15 @@ export const useStore = create<State>((set, get) => ({
 
   stop: async (id) => {
     await api.instances.stop(id)
+  },
+
+  renameInstance: async (id, name) => {
+    try {
+      await api.instances.rename(id, name)
+      await get().refreshInstances()
+    } catch (err) {
+      get().toast('error', '重命名失败', err instanceof Error ? err.message : String(err))
+    }
   },
 
   removeInstance: async (id) => {

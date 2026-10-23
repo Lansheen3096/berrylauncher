@@ -154,13 +154,19 @@ function InstanceCard({ instance }: { instance: InstanceSummary }) {
   const [confirming, setConfirming] = useState(false)
   const [editing, setEditing] = useState(false)
   const [modsOpen, setModsOpen] = useState(false)
+  const [name, setName] = useState(instance.name)
   const [memory, setMemory] = useState(instance.settings.memoryMB ?? 0)
   const [jvmArgs, setJvmArgs] = useState(instance.settings.jvmArgs ?? '')
+
+  useEffect(() => setName(instance.name), [instance.name])
 
   const running = launch.status?.state === 'running' && launch.status.versionId === instance.id
 
   const save = async () => {
     try {
+      const nextName = name.trim()
+      if (!nextName) throw new Error('名称不能为空')
+      if (nextName !== instance.name) await api.instances.rename(instance.id, nextName)
       await api.instances.updateSettings(instance.id, {
         memoryMB: memory || undefined,
         jvmArgs: jvmArgs || undefined,
@@ -254,6 +260,15 @@ function InstanceCard({ instance }: { instance: InstanceSummary }) {
             </div>
           }
         >
+          <Field label="显示名称" hint="只修改列表中的名称，不会移动实例目录">
+            <input
+              className="input"
+              value={name}
+              maxLength={60}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={instance.name}
+            />
+          </Field>
           <Field label="最大内存" hint={`${((memory || 0) / 1024).toFixed(1)} GB · 留空使用全局默认`}>
             <Slider
               value={memory || 4096}
@@ -312,18 +327,18 @@ export function InstancesPage() {
     <div className="page instances-page">
       <header className="page-head">
         <div>
-          <h1>实例</h1>
-          <p>每个实例拥有独立的存档、模组与日志目录</p>
+          <h1>版本管理</h1>
+          <p>管理已安装的游戏版本、加载器和独立实例目录</p>
         </div>
         <Button variant="primary" icon={<Plus size={16} />} onClick={() => setPage('browse')}>
-          安装新实例
+          安装新版本
         </Button>
       </header>
 
       {instances.length === 0 ? (
         <EmptyState
           icon={<Boxes size={28} />}
-          title="还没有实例"
+          title="还没有版本"
           description="从版本库挑一个 Minecraft 版本，再选择 Fabric、Forge 或 NeoForge。"
           action={
             <Button variant="primary" onClick={() => setPage('browse')}>

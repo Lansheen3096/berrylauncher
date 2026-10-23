@@ -375,6 +375,7 @@ export interface BerryAPI {
     launch(id: string): Promise<LaunchStatus>
     stop(id: string): Promise<void>
     remove(id: string): Promise<void>
+    rename(id: string, name: string): Promise<void>
     openFolder(id: string): Promise<void>
     updateSettings(id: string, patch: DeepPartial<InstanceSettings>): Promise<void>
     setLastPlayed(id: string): Promise<void>

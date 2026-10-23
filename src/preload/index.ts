@@ -48,6 +48,7 @@ const api: BerryAPI = {
     launch: (id) => call('instances:launch', id),
     stop: (id) => call('instances:stop', id),
     remove: (id) => call('instances:remove', id),
+    rename: (id, name) => call('instances:rename', id, name),
     openFolder: (id) => call('instances:open-folder', id),
     updateSettings: (id, patch) => call('instances:update-settings', id, patch),
     setLastPlayed: (id) => call('instances:set-last-played', id),

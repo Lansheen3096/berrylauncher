@@ -9,7 +9,7 @@ const NAV: { id: PageId; label: string; icon: typeof Home }[] = [
   { id: 'home', label: '主页', icon: Home },
   { id: 'discover', label: '资源库', icon: Compass },
   { id: 'browse', label: '版本库', icon: LibraryBig },
-  { id: 'instances', label: '实例', icon: Boxes },
+  { id: 'instances', label: '版本管理', icon: Boxes },
   { id: 'downloads', label: '下载', icon: DownloadCloud },
   { id: 'settings', label: '设置', icon: Settings },
 ]
