@@ -12,6 +12,7 @@ import { readJsonFile, writeFileAtomic } from './net'
 import { readMeta, writeMeta } from './instances'
 import { ensureDir as ensureDirPath, instancesDir, versionDir } from './paths'
 import { log } from './logger'
+import type { ResourceStore, ResourceTarget } from './resources'
 
 interface MrpackFile {
   path: string
@@ -92,6 +93,7 @@ export class ModpackService {
     private readonly loaders: LoaderService,
     private readonly modrinth: ModrinthService,
     private readonly settings: SettingsStore,
+    private readonly store: ResourceStore,
   ) {}
 
   private renameVersionFolder(gameDir: string, from: string, to: string): void {
@@ -201,6 +203,38 @@ export class ModpackService {
         reporter.set({ progress: 0.56 + ratio * 0.34, detail: `下载整合包文件 ${p.filesDone}/${p.filesTotal}` })
       },
     }).run(tasks)
+
+    // Deduplicate immutable resource files (mods / resource packs / shaders).
+    // Configs and saves stay private to the instance.
+    const resourceTarget: ResourceTarget = {
+      instanceId,
+      baseDir: root,
+      dirs: [
+        { kind: 'mods', path: path.join(root, 'mods') },
+        { kind: 'resourcepacks', path: path.join(root, 'resourcepacks') },
+        { kind: 'shaderpacks', path: path.join(root, 'shaderpacks') },
+      ],
+    }
+    const canDedupe = this.store.canHardlink(root)
+    for (const file of files) {
+      if (!canDedupe) break
+      const kind = file.path.startsWith('mods/')
+        ? 'mods'
+        : file.path.startsWith('resourcepacks/')
+          ? 'resourcepacks'
+          : file.path.startsWith('shaderpacks/')
+            ? 'shaderpacks'
+            : null
+      if (!kind) continue
+      const dest = safeJoin(root, file.path)
+      try {
+        const sha1 = await this.store.importToStore(dest, file.hashes.sha1)
+        this.store.linkInto(sha1, dest)
+        this.store.record(resourceTarget, kind, path.basename(dest), sha1, true)
+      } catch (err) {
+        log.warn('failed to dedupe modpack file', dest, err)
+      }
+    }
 
     reporter.throwIfCancelled()
     reporter.set({ detail: '释放覆盖文件', progress: 0.92 })

@@ -71,6 +71,15 @@ export function createInstanceMeta(
   }
 }
 
+export function instanceGameDir(
+  gameDir: string,
+  id: string,
+  meta: InstanceMeta | null,
+  versionIsolation: boolean,
+): string {
+  return versionIsolation || meta?.pack ? instanceDir(gameDir, id) : gameDir
+}
+
 export function ensureInstanceFolders(gameDir: string, id: string): void {
   const dir = instanceDir(gameDir, id)
   for (const sub of ['mods', 'saves', 'resourcepacks', 'shaderpacks', 'screenshots']) {
@@ -174,6 +183,25 @@ export function updateInstanceSettings(
   return meta
 }
 
+function makeWritableTree(dir: string, depth = 6): void {
+  if (depth < 0) return
+  let entries: fs.Dirent[] = []
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true })
+  } catch {
+    return
+  }
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name)
+    try {
+      if (entry.isDirectory()) makeWritableTree(full, depth - 1)
+      else fs.chmodSync(full, 0o644)
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
 export function deleteInstance(gameDir: string, id: string, vs: VersionService): void {
   const root = path.join(gameDir, 'versions')
   let dependents: string[] = []
@@ -188,7 +216,9 @@ export function deleteInstance(gameDir: string, id: string, vs: VersionService):
   if (dependents.length > 0) {
     throw new Error(`无法删除：${dependents.join('、')} 依赖该版本`)
   }
+  const instance = instanceDir(gameDir, id)
+  makeWritableTree(instance)
   fs.rmSync(versionDir(gameDir, id), { recursive: true, force: true })
-  fs.rmSync(instanceDir(gameDir, id), { recursive: true, force: true })
+  fs.rmSync(instance, { recursive: true, force: true })
   ensureDir(instancesDir(gameDir))
 }

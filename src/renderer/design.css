@@ -899,6 +899,14 @@ html[data-mode='light'] .nav-item:hover {
   box-shadow: var(--shadow);
 }
 
+.modal-sm {
+  width: min(440px, 100%);
+}
+
+.modal-lg {
+  width: min(760px, 100%);
+}
+
 .modal-head {
   padding: 18px 20px 0;
 }

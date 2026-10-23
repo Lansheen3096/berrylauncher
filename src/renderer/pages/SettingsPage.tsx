@@ -19,7 +19,7 @@ import { api } from '../lib/api'
 import { APP_NAME_CN, CLUB_NAME, GITHUB_URL, MAX_MEMORY, MIN_MEMORY } from '@shared/constants'
 import { Badge, Button, Field, Segmented, Slider, Switch } from '../components/ui'
 import { BerryLogo } from '../components/BerryLogo'
-import { cx } from '../lib/format'
+import { cx, formatBytes } from '../lib/format'
 
 function Section({ icon, title, description, children }: { icon: React.ReactNode; title: string; description: string; children: React.ReactNode }) {
   return (
@@ -51,6 +51,8 @@ export function SettingsPage() {
   const [clientId, setClientId] = useState(settings?.msClientId ?? '')
   const [jvmArgs, setJvmArgs] = useState(settings?.jvmArgs ?? '')
   const [downloading, setDownloading] = useState('')
+  const [usage, setUsage] = useState<{ storeBytes: number; storeFiles: number; savedBytes: number; linkedFiles: number } | null>(null)
+  const [slimming, setSlimming] = useState(false)
 
   useEffect(() => {
     setGameDir(settings?.gameDir ?? '')
@@ -65,6 +67,7 @@ export function SettingsPage() {
       .then(setJavas)
       .catch(() => undefined)
       .finally(() => setDetecting(false))
+    api.storage.usage().then(setUsage).catch(() => undefined)
   }, [])
 
   if (!settings || !info) return null
@@ -179,6 +182,22 @@ export function SettingsPage() {
           />
         </Field>
 
+        <Field label="版本隔离" hint="每个实例独立的 mods / saves / config；关闭后所有实例共享">
+          <Switch
+            checked={settings.versionIsolation}
+            onChange={(value) => void update({ versionIsolation: value })}
+            label="版本隔离"
+          />
+        </Field>
+
+        <Field label="自动瘦身" hint="空闲时按 SHA-1 去重手动拖入的模组、材质包与光影">
+          <Switch
+            checked={settings.resourceAutoSlim}
+            onChange={(value) => void update({ resourceAutoSlim: value })}
+            label="自动瘦身"
+          />
+        </Field>
+
         <Field label="启动时展开控制台" hint="关闭时只在底部显示一条日志状态栏">
           <Switch
             checked={settings.consoleAutoOpen}
@@ -251,6 +270,48 @@ export function SettingsPage() {
               {item.label}
             </Button>
           ))}
+        </div>
+
+        <div className="storage-panel">
+          <div className="storage-copy">
+            <strong>资源实体库</strong>
+            <span>
+              已存 {usage ? formatBytes(usage.storeBytes) : '—'} · {usage?.storeFiles ?? 0} 个实体 · 已节省{' '}
+              {usage ? formatBytes(usage.savedBytes) : '—'}
+            </span>
+          </div>
+          <div className="storage-actions">
+            <Button
+              variant="secondary"
+              size="sm"
+              loading={slimming}
+              onClick={async () => {
+                setSlimming(true)
+                try {
+                  const result = await api.storage.slim()
+                  toast('success', '资源整理完成', `节省 ${formatBytes(result.savedBytes)}`)
+                  setUsage(await api.storage.usage())
+                } catch (err) {
+                  toast('error', '整理失败', err instanceof Error ? err.message : String(err))
+                } finally {
+                  setSlimming(false)
+                }
+              }}
+            >
+              立即整理
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={async () => {
+                const result = await api.storage.gc()
+                setUsage(await api.storage.usage())
+                toast('info', '已清理未引用实体', `释放 ${formatBytes(result.freedBytes)}`)
+              }}
+            >
+              清理未引用
+            </Button>
+          </div>
         </div>
 
         <Field label="默认 JVM 参数" hint="空格分隔，留空使用启动器推荐值">

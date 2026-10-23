@@ -44,6 +44,18 @@ BerryLauncher 是一个面向玩家、也面向同好会内部使用的 Minecraf
 
 Forge / NeoForge 使用官方 installer 的 `--installClient` 无头模式，自动补齐处理器、映射与依赖，避免自行复刻 Forge 的处理器链导致版本兼容问题。
 
+### 版本隔离与资源实体库
+
+- 设置里的「版本隔离」开关默认开启：每个实例独立 `mods / saves / config`；关闭后共享根目录，整合包实例始终强制隔离。
+- 所有 mod、材质包、光影按 SHA-1 只存一份实体（`<dataDir>/resources`），实例里放只读硬链接；跨卷/exFAT 自动退化为复制。
+- 可选「自动瘦身」：空闲时扫描手动拖进文件夹的资源并去重；默认关闭，首次会提示一次。
+- 支持导出实例中被修改/新增的资源：整文件 + `berry-resource-manifest.json` 变更清单。
+
+### 游玩时长
+
+- 独立 `playtime.json` 账本，20 秒心跳，启动器崩溃后按最后心跳恢复，不再只在退出时记一笔。
+- 主页显示总时长和按 MC 版本的柱状统计；实例卡保留最近游玩时间。
+
 ### 资源库（Modrinth）
 
 - 模组 / 整合包搜索：按 Minecraft 版本、加载器（Fabric / Quilt / Forge / NeoForge）、相关度 / 下载量 / 关注数筛选。
@@ -126,6 +138,8 @@ src/
     modrinth.ts         Modrinth 搜索、项目、版本与依赖
     mods.ts             模组安装、启用/禁用、删除与本地索引
     modpacks.ts         .mrpack 解析、整合包实例安装
+    resources.ts        资源实体库、硬链接去重、自动瘦身、修改导出
+    playtime.ts         游玩时长账本、心跳与按版本聚合
     authlib.ts          authlib-injector 下载与校验
     download.ts         并发下载器（重试 / SHA-1 / 进度）
     java.ts             运行时探测与 Mojang JRE 下载
@@ -193,6 +207,9 @@ Client ID 不是密钥，可安全保存在本地配置文件中；令牌仅存�
 
 - Windows 包在 Linux 上交叉构建，尚未在 Windows 真机冒烟；首次发布前建议在 Windows 10/11 上跑一遍安装与启动。
 - CurseForge 在线搜索需要 API Key，当前只做 Modrinth 在线；本地导入目前支持 `.mrpack`，CurseForge zip 在路线图中。
+- 资源去重依赖同卷硬链接；游戏目录和启动器数据目录跨盘时只保留原文件，不产生额外副本。
+- 同时运行多个实例时总游玩时长按各自运行时间相加；启动器退出后游戏若继续运行，后续时间不计入。
+- 资源实体设为只读；要修改请使用「复制到实例并解锁」流程（UI 随后接入）。
 - MUA 登录需要真实账户；密码不会保存，但令牌会以 0600 权限写入 `accounts.json`。
 - 远古版本（1.5 及更早）使用旧资源索引，当前会给出明确提示而不是静默失败。
 - 微软登录依赖用户自备 Client ID。
@@ -208,6 +225,8 @@ Client ID 不是密钥，可安全保存在本地配置文件中；令牌仅存�
 - [ ] CurseForge 在线搜索（用户自备 API Key）与 CurseForge zip 导入
 - [ ] 模组更新检查、实例导出
 - [ ] 控制台日志搜索与高度拖拽
+- [x] 版本隔离、资源实体库与自动瘦身
+- [x] 游玩时长统计（实例 / MC 版本 / 总计）
 - [ ] 自动更新与增量下载
 - [ ] 多语言（当前为简体中文）
 - [ ] 皮肤预览与正版服务器状态

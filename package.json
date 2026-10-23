@@ -1,7 +1,7 @@
 {
   "name": "berrylauncher",
   "productName": "BerryLauncher",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "甜浆果启动器 - 辽宁科技大学甜浆果像素同好会开源 Minecraft 启动器",
   "main": "dist/main/index.js",
   "author": "USTL Sweet Berry Pixel Club",

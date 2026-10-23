@@ -16,7 +16,7 @@ import { InstancesPage } from './pages/InstancesPage'
 import { DownloadsPage } from './pages/DownloadsPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { BerryLogo } from './components/BerryLogo'
-import { Button, Spinner } from './components/ui'
+import { Button, Modal, Spinner } from './components/ui'
 
 function Splash({ error, onRetry }: { error?: string; onRetry?: () => void }) {
   return (
@@ -55,7 +55,9 @@ export default function App() {
   const appendLogs = useStore((s) => s.appendLogs)
   const refreshInstances = useStore((s) => s.refreshInstances)
   const toast = useStore((s) => s.toast)
+  const instances = useStore((s) => s.instances)
   const [bootError, setBootError] = useState('')
+  const [slimTip, setSlimTip] = useState(false)
 
   const boot = async () => {
     setBootError('')
@@ -76,6 +78,13 @@ export default function App() {
   useEffect(() => {
     if (settings) applyTheme(settings.theme.accent, settings.theme.mode)
   }, [settings?.theme.accent, settings?.theme.mode, settings])
+
+  useEffect(() => {
+    if (!ready || instances.length === 0 || !settings || settings.resourceAutoSlim) return
+    if (localStorage.getItem('berry.slimTip')) return
+    setSlimTip(true)
+    localStorage.setItem('berry.slimTip', 'shown')
+  }, [ready, instances.length, settings])
 
   useEffect(() => {
     const unsubscribers = [
@@ -121,6 +130,38 @@ export default function App() {
       <Toasts />
       {modal?.type === 'install' ? <InstallDialog version={modal.version} onClose={() => openModal(null)} /> : null}
       {modal?.type === 'account' ? <AccountDialog onClose={() => openModal(null)} /> : null}
+      {slimTip ? (
+        <Modal
+          title="开启自动瘦身？"
+          subtitle="模组、材质包、光影会按 SHA-1 只保留一份，多个实例共享同一份实体。"
+          size="sm"
+          onClose={() => setSlimTip(false)}
+          footer={
+            <div className="modal-actions">
+              <Button variant="ghost" onClick={() => setSlimTip(false)}>
+                以后再说
+              </Button>
+              <Button
+                variant="primary"
+                onClick={async () => {
+                  setSlimTip(false)
+                  await useStore.getState().updateSettings({ resourceAutoSlim: true })
+                  useStore.getState().toast('info', '自动瘦身已开启', '正在扫描已有资源…')
+                  void api.storage.slim().then((result) => {
+                    useStore.getState().toast('success', '整理完成', `节省 ${(result.savedBytes / 1024 / 1024).toFixed(1)} MB`)
+                  }).catch(() => undefined)
+                }}
+              >
+                开启并整理
+              </Button>
+            </div>
+          }
+        >
+          <p className="option-note">
+            关闭也不影响使用：启动器安装的模组仍然只存一份；开启后会额外整理手动拖进文件夹的重复资源。
+          </p>
+        </Modal>
+      ) : null}
     </div>
   )
 }

@@ -8,9 +8,11 @@ import { Downloader } from './download'
 import { ensureDir, instanceDir } from './paths'
 import { readJsonFile, writeFileAtomic } from './net'
 import { readMeta } from './instances'
+import type { ResourceStore, ResourceTarget } from './resources'
 import { log } from './logger'
 
 interface ModIndexEntry {
+  sha1?: string
   projectId?: string
   versionId?: string
   versionNumber?: string
@@ -41,10 +43,22 @@ export class ModService {
   constructor(
     private readonly settings: SettingsStore,
     private readonly modrinth: ModrinthService,
+    private readonly store: ResourceStore,
   ) {}
 
   private modsDir(instanceId: string): string {
-    return path.join(instanceDir(this.settings.get().gameDir, instanceId), 'mods')
+    const gameDir = this.settings.get().gameDir
+    const meta = readMeta(gameDir, instanceId)
+    const isolated = this.settings.get().versionIsolation || Boolean(meta?.pack)
+    return path.join(isolated ? instanceDir(gameDir, instanceId) : gameDir, 'mods')
+  }
+
+  private target(instanceId: string, modsDir: string): ResourceTarget {
+    return {
+      instanceId,
+      baseDir: path.dirname(modsDir),
+      dirs: [{ kind: 'mods', path: modsDir }],
+    }
   }
 
   private readIndex(modsDir: string): ModIndex {
@@ -84,6 +98,7 @@ export class ModService {
         enabled: !isDisabled,
         size,
         projectId: entry?.projectId,
+        sha1: entry?.sha1,
         versionId: entry?.versionId,
         versionNumber: entry?.versionNumber,
         title: entry?.title,
@@ -105,6 +120,7 @@ export class ModService {
     const modsDir = this.modsDir(instanceId)
     ensureDir(modsDir)
     const index = this.readIndex(modsDir)
+    const target = this.target(instanceId, modsDir)
     const installedProjects = new Set(Object.values(index).map((entry) => entry.projectId).filter(Boolean) as string[])
 
     const queue: ModrinthVersion[] = [await this.modrinth.version(versionId)]
@@ -158,20 +174,40 @@ export class ModService {
       return sum + (file?.size ?? 0)
     }, 0)
     let doneBytes = 0
+    const useStore = this.store.canHardlink(modsDir)
 
     for (const item of planned) {
       const file = item.version.files.find((f) => f.primary) ?? item.version.files[0]
       if (!file) continue
-      await new Downloader({
-        concurrency: 1,
-        source: 'official',
-        signal: reporter?.signal,
-        onProgress: (progress) => {
-          if (total > 0) reporter?.set({ progress: (doneBytes + progress.received) / total, detail: `下载模组 ${item.version.name}` })
-        },
-      }).run([{ url: file.url, dest: item.dest, sha1: file.hashes.sha1, size: file.size }])
+      const sha1 = file.hashes.sha1
+      const name = path.basename(item.dest)
+      let linked = false
+      if (useStore && sha1 && this.store.has(sha1, file.size)) {
+        linked = this.store.linkInto(sha1, item.dest) === 'link'
+      } else {
+        const downloadTarget = useStore && sha1 ? `${item.dest}.berry-download` : item.dest
+        await new Downloader({
+          concurrency: 1,
+          source: 'official',
+          signal: reporter?.signal,
+          onProgress: (progress) => {
+            if (total > 0) reporter?.set({ progress: (doneBytes + progress.received) / total, detail: `下载模组 ${item.version.name}` })
+          },
+        }).run([{ url: file.url, dest: downloadTarget, sha1, size: file.size }])
+        if (useStore && sha1) {
+          const stored = await this.store.importToStore(downloadTarget, sha1)
+          linked = this.store.linkInto(stored, item.dest) === 'link'
+          try {
+            fs.unlinkSync(downloadTarget)
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+      if (sha1) this.store.record(target, 'mods', name, sha1, linked)
       doneBytes += file.size
-      index[path.basename(item.dest)] = {
+      index[name] = {
+        sha1,
         projectId: item.version.projectId,
         versionId: item.version.id,
         versionNumber: item.version.versionNumber,
@@ -180,10 +216,11 @@ export class ModService {
       }
       this.writeIndex(modsDir, index)
       installs.push({
-        file: path.basename(item.dest),
+        file: name,
         name: item.version.name,
         enabled: true,
         size: file.size,
+        sha1,
         projectId: item.version.projectId,
         versionId: item.version.id,
         versionNumber: item.version.versionNumber,
@@ -229,7 +266,7 @@ export class ModService {
     const base = file.replace(/\.disabled$/, '')
     for (const target of [path.join(dir, base), path.join(dir, `${base}.disabled`)]) {
       try {
-        fs.unlinkSync(target)
+        this.store.removeLink(target)
       } catch {
         /* ignore */
       }

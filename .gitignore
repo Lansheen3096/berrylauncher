@@ -25,3 +25,7 @@ release/
 .uihome/
 
 .arch测试/
+
+.funcdata/
+.storetest/
+.testsupport*/

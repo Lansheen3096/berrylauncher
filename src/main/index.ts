@@ -4,6 +4,7 @@ import fs from 'node:fs'
 import { registerIpc } from './ipc'
 import { settingsStore } from './settings'
 import { log } from './logger'
+import { playtime } from './playtime'
 
 const isDev = !app.isPackaged
 const devServerUrl = process.env.VITE_DEV_SERVER_URL
@@ -114,6 +115,10 @@ if (!app.requestSingleInstanceLock()) {
       if (mainWindow.isMinimized()) mainWindow.restore()
       mainWindow.focus()
     }
+  })
+
+  app.on('before-quit', () => {
+    playtime.shutdown()
   })
 
   app.on('window-all-closed', () => {

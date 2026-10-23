@@ -86,6 +86,16 @@ const api: BerryAPI = {
     servers: () => call('authlib:servers'),
     login: (request) => call('authlib:login', request),
   },
+  storage: {
+    usage: () => call('storage:usage'),
+    slim: () => call('storage:slim'),
+    gc: () => call('storage:gc'),
+    exportResources: (instanceId) => call('storage:export', instanceId),
+  },
+  playtime: {
+    snapshot: () => call('playtime:snapshot'),
+    reset: () => call('playtime:reset'),
+  },
   on: (channel, listener) => {
     if (!EVENT_CHANNELS.includes(channel)) {
       throw new Error(`不允许监听事件 ${String(channel)}`)

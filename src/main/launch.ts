@@ -10,6 +10,7 @@ import { isNativeLibrary, libraryArtifact, libraryKey, rulesAllow } from './vers
 import type { JavaService } from './java'
 import { readMeta, writeMeta } from './instances'
 import { authlibInjector } from './authlib'
+import { playtime } from './playtime'
 import { log } from './logger'
 
 interface Session {
@@ -75,7 +76,8 @@ export class LaunchService {
     const meta = readMeta(gameDir, id)
     const resolved = this.versions.resolve(id, gameDir)
     const instanceSettings: InstanceSettings = meta?.settings ?? {}
-    const instancePath = instanceDir(gameDir, id)
+    const isolated = settings.versionIsolation || Boolean(meta?.pack)
+    const instancePath = isolated ? instanceDir(gameDir, id) : gameDir
     ensureDir(instancePath)
 
     const clientJar = versionJarPath(gameDir, resolved.jarId)
@@ -96,7 +98,7 @@ export class LaunchService {
     )
 
     const memory = instanceSettings.memoryMB ?? settings.memoryMB
-    const nativesDir = path.join(instancePath, 'natives')
+    const nativesDir = path.join(instanceDir(gameDir, id), 'natives')
     this.versions.extractNatives(resolved, nativesDir)
 
     // Forge 1.17+ / NeoForge use BootstrapLauncher: the vanilla client jar must
@@ -270,6 +272,11 @@ export class LaunchService {
       log.info('instance exited', id, 'code', code)
     })
 
+    playtime.start(id, {
+      name: meta?.name ?? id,
+      mcVersion: meta?.mcVersion ?? resolved.mcVersion,
+      loader: meta?.loader ?? 'vanilla',
+    })
     this.emit('launch:status', status)
     return status
   }
@@ -294,6 +301,7 @@ export class LaunchService {
   ): void {
     if (!this.running.has(id)) return
     this.running.delete(id)
+    playtime.end(id)
     const gameDir = this.settings.get().gameDir
     const meta = readMeta(gameDir, id)
     if (meta) {

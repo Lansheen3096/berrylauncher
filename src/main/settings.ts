@@ -17,6 +17,8 @@ function defaults(): Settings {
     jvmArgs: '',
     msClientId: '',
     consoleAutoOpen: false,
+    versionIsolation: true,
+    resourceAutoSlim: false,
   }
 }
 
@@ -35,6 +37,8 @@ function sanitize(input: Settings): Settings {
     javaPath: (input.javaPath ?? '').trim(),
     jvmArgs: input.jvmArgs ?? '',
     consoleAutoOpen: Boolean(input.consoleAutoOpen),
+    versionIsolation: input.versionIsolation !== false,
+    resourceAutoSlim: Boolean(input.resourceAutoSlim),
   }
 }
 

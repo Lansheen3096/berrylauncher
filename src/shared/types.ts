@@ -159,6 +159,7 @@ export interface InstalledMod {
   name: string
   enabled: boolean
   size: number
+  sha1?: string
   projectId?: string
   versionId?: string
   versionNumber?: string
@@ -213,9 +214,13 @@ export interface Settings {
   msClientId: string
   /** Open the log console automatically when a game starts. */
   consoleAutoOpen: boolean
+  /** Per-instance mods/saves/config isolation (classic version isolation). */
+  versionIsolation: boolean
+  /** Opt-in background dedupe of manually added resources. */
+  resourceAutoSlim: boolean
 }
 
-export type TaskKind = 'install' | 'java' | 'assets'
+export type TaskKind = 'install' | 'java' | 'assets' | 'storage'
 export type TaskStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled'
 
 export interface TaskUpdate {
@@ -294,6 +299,52 @@ export interface EventMap {
 
 export type PageId = 'home' | 'browse' | 'instances' | 'downloads' | 'discover' | 'settings'
 
+export interface ResourceUsage {
+  storeBytes: number
+  storeFiles: number
+  linkedFiles: number
+  savedBytes: number
+  copyFallback: number
+}
+
+export interface SlimResult {
+  scanned: number
+  linked: number
+  moved: number
+  savedBytes: number
+  skipped: number
+  errors: string[]
+}
+
+export interface ResourceExportResult {
+  path: string
+  files: number
+  bytes: number
+}
+
+export interface InstancePlaytime {
+  id: string
+  name: string
+  mcVersion: string
+  loader: LoaderKind
+  seconds: number
+  lastPlayedAt?: number
+  deleted?: boolean
+}
+
+export interface McVersionPlaytime {
+  mcVersion: string
+  seconds: number
+  instances: number
+}
+
+export interface PlaytimeSnapshot {
+  totalSeconds: number
+  byInstance: InstancePlaytime[]
+  byMcVersion: McVersionPlaytime[]
+  active: { id: string; startedAt: number }[]
+}
+
 export type IpcResult<T> = { ok: true; data: T } | { ok: false; error: string }
 
 export interface BerryAPI {
@@ -361,6 +412,16 @@ export interface BerryAPI {
   authlib: {
     servers(): Promise<AuthlibServerInfo[]>
     login(request: AuthlibLoginRequest): Promise<Account>
+  }
+  storage: {
+    usage(): Promise<ResourceUsage>
+    slim(): Promise<SlimResult>
+    gc(): Promise<{ freedBytes: number; removed: number }>
+    exportResources(instanceId: string): Promise<ResourceExportResult>
+  }
+  playtime: {
+    snapshot(): Promise<PlaytimeSnapshot>
+    reset(): Promise<void>
   }
   on<K extends keyof EventMap>(channel: K, listener: (payload: EventMap[K]) => void): () => void
 }

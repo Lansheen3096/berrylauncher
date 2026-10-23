@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   AlertTriangle,
   Boxes,
+  FileDown,
   FolderOpen,
   Package,
   Play,
@@ -51,6 +52,20 @@ function ModsDialog({ instance, onClose }: { instance: InstanceSummary; onClose:
             {mods.filter((mod) => mod.enabled).length} 个启用 · {mods.length} 个文件
           </span>
           <div className="install-foot-actions">
+            <Button
+              variant="ghost"
+              icon={<FileDown size={14} />}
+              onClick={async () => {
+                try {
+                  const result = await api.storage.exportResources(instance.id)
+                  toast('success', '已导出修改资源', result.path)
+                } catch (err) {
+                  toast('error', '导出失败', err instanceof Error ? err.message : String(err))
+                }
+              }}
+            >
+              导出修改
+            </Button>
             <Button variant="ghost" onClick={onClose}>
               关闭
             </Button>

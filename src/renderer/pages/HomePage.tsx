@@ -6,6 +6,7 @@ import { Badge, Button, Card, EmptyState, IconButton } from '../components/ui'
 import { BerryLogo } from '../components/BerryLogo'
 import { GITHUB_URL, LOADER_COLORS } from '@shared/constants'
 import { api } from '../lib/api'
+import type { PlaytimeSnapshot } from '@shared/types'
 
 function InstancePicker() {
   const instances = useStore((s) => s.instances)
@@ -73,16 +74,22 @@ export function HomePage() {
   const openModal = useStore((s) => s.openModal)
   const remote = useStore((s) => s.remote)
   const selectInstance = useStore((s) => s.selectInstance)
+  const [playtime, setPlaytime] = useState<PlaytimeSnapshot | null>(null)
 
   const selected = instances.find((i) => i.id === selectedId) ?? instances[0]
   const running = launch.status?.state === 'running' && launch.status.versionId === selected?.id
-  const totalPlayTime = instances.reduce((sum, i) => sum + (i.playTimeSec ?? 0), 0)
+  const totalPlayTime = playtime?.totalSeconds ?? instances.reduce((sum, i) => sum + (i.playTimeSec ?? 0), 0)
+  const maxVersionTime = Math.max(1, ...(playtime?.byMcVersion.map((entry) => entry.seconds) ?? [0]))
   const latestRelease = useMemo(() => remote.find((v) => v.type === 'release'), [remote])
   const recent = instances.filter((i) => i.lastPlayedAt).slice(0, 3)
 
   useEffect(() => {
     if (!selectedId && instances[0]) selectInstance(instances[0].id)
   }, [instances, selectedId, selectInstance])
+
+  useEffect(() => {
+    void api.playtime.snapshot().then(setPlaytime).catch(() => undefined)
+  }, [instances, launch.status?.state])
 
   return (
     <div className="page home-page">
@@ -210,6 +217,26 @@ export function HomePage() {
           </div>
         </Card>
       </div>
+
+      {playtime && playtime.byMcVersion.length > 0 ? (
+        <Card className="playtime-panel">
+          <div className="panel-head">
+            <h2>游玩统计</h2>
+            <span className="muted-text">按 MC 版本 · 总 {formatDuration(playtime.totalSeconds)}</span>
+          </div>
+          <div className="playtime-list">
+            {playtime.byMcVersion.slice(0, 6).map((entry) => (
+              <div key={entry.mcVersion} className="playtime-row">
+                <span className="playtime-version">{entry.mcVersion}</span>
+                <div className="playtime-bar">
+                  <span style={{ width: `${(entry.seconds / maxVersionTime) * 100}%` }} />
+                </div>
+                <span className="playtime-value">{formatDuration(entry.seconds)}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      ) : null}
 
       <div className="home-columns">
         <Card className="panel recent-panel">

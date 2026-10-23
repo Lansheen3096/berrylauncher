@@ -19,11 +19,14 @@ import { AccountService } from './accounts'
 import { LaunchService } from './launch'
 import { InstallService } from './installer'
 import { taskManager } from './tasks'
-import { listInstances, deleteInstance, updateInstanceSettings, readMeta, writeMeta } from './instances'
-import { dataDir } from './paths'
+import { listInstances, deleteInstance, updateInstanceSettings, readMeta, writeMeta, instanceGameDir } from './instances'
+import { dataDir, instanceDir } from './paths'
 import { ModrinthService } from './modrinth'
 import { ModService } from './mods'
 import { ModpackService } from './modpacks'
+import { ResourceStore, type ResourceTarget } from './resources'
+import { playtime } from './playtime'
+import type { SlimResult } from '../shared/types'
 import { log } from './logger'
 
 const settings = settingsStore
@@ -41,8 +44,9 @@ const javaService = new JavaService(
 )
 const loaders = new LoaderService(versions, settings, javaService)
 const modrinth = new ModrinthService()
-const mods = new ModService(settings, modrinth)
-const modpacks = new ModpackService(loaders, modrinth, settings)
+const resources = new ResourceStore(settings)
+const mods = new ModService(settings, modrinth, resources)
+const modpacks = new ModpackService(loaders, modrinth, settings, resources)
 const accounts = new AccountService(settings)
 const launchService = new LaunchService(versions, settings, javaService, (channel, payload) =>
   broadcast(channel, payload),
@@ -74,7 +78,50 @@ function requireString(value: unknown, field: string): string {
   return value
 }
 
+function resourceTargets(): ResourceTarget[] {
+  const gameDir = settings.get().gameDir
+  const isolated = settings.get().versionIsolation
+  const running = new Set(launchService.runningIds())
+  return listInstances(versions)
+    .filter((instance) => !running.has(instance.id))
+    .map((instance) => {
+      const baseDir = instanceGameDir(gameDir, instance.id, readMeta(gameDir, instance.id), isolated)
+      return {
+        instanceId: instance.id,
+        baseDir,
+        dirs: [
+          { kind: 'mods' as const, path: path.join(baseDir, 'mods') },
+          { kind: 'resourcepacks' as const, path: path.join(baseDir, 'resourcepacks') },
+          { kind: 'shaderpacks' as const, path: path.join(baseDir, 'shaderpacks') },
+        ],
+      }
+    })
+}
+
+async function runSlim(): Promise<SlimResult> {
+  const task = taskManager.create('storage', '整理资源存储', '扫描资源文件…')
+  try {
+    const result = await resources.slim(resourceTargets(), task)
+    taskManager.finish(task.id, 'completed', {
+      detail: `整理完成：新增共享 ${result.linked} 个，节省 ${(result.savedBytes / 1024 / 1024).toFixed(1)} MB`,
+      progress: 1,
+    })
+    return result
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    taskManager.finish(task.id, task.signal.aborted ? 'cancelled' : 'failed', { error: message })
+    throw err
+  }
+}
+
 export function registerIpc(): void {
+  playtime.init(listInstances(versions))
+  if (settings.get().resourceAutoSlim) {
+    setTimeout(() => {
+      void runSlim().catch((err) => log.warn('auto slim failed', err))
+    }, 6000)
+  }
+
   // ---------- app ----------
   handle('app:info', () => ({
     version: APP_VERSION,
@@ -150,10 +197,14 @@ export function registerIpc(): void {
   handle('instances:remove', (id: string) => {
     if (launchService.isRunning(id)) throw new Error('实例正在运行，无法删除')
     deleteInstance(settings.get().gameDir, id, versions)
+    playtime.markDeleted(id)
+    resources.gc()
     broadcast('instances:changed', listInstances(versions))
   })
   handle('instances:open-folder', async (id: string) => {
-    const dir = path.join(settings.get().gameDir, 'instances', id)
+    const gameDir = settings.get().gameDir
+    const meta = readMeta(gameDir, id)
+    const dir = instanceGameDir(gameDir, id, meta, settings.get().versionIsolation)
     fs.mkdirSync(dir, { recursive: true })
     const result = await shell.openPath(dir)
     if (result) throw new Error(result)
@@ -220,6 +271,7 @@ export function registerIpc(): void {
   })
   handle('mods:remove', (instanceId: string, file: string) => {
     mods.remove(instanceId, file)
+    resources.gc()
     broadcast('instances:changed', listInstances(versions))
   })
   handle('modpacks:install', async (request: ModpackInstallRequest) => {
@@ -256,6 +308,27 @@ export function registerIpc(): void {
   })
   handle('authlib:servers', () => accounts.authlibServers())
   handle('authlib:login', (request: AuthlibLoginRequest) => accounts.loginAuthlib(request))
+
+  // ---------- storage / playtime ----------
+  handle('storage:usage', () => resources.usage())
+  handle('storage:slim', () => runSlim())
+  handle('storage:gc', () => resources.gc())
+  handle('storage:export', (instanceId: string) => {
+    const gameDir = settings.get().gameDir
+    const meta = readMeta(gameDir, instanceId)
+    const baseDir = instanceGameDir(gameDir, instanceId, meta, settings.get().versionIsolation)
+    return resources.exportResources({
+      instanceId,
+      baseDir,
+      dirs: [
+        { kind: 'mods', path: path.join(baseDir, 'mods') },
+        { kind: 'resourcepacks', path: path.join(baseDir, 'resourcepacks') },
+        { kind: 'shaderpacks', path: path.join(baseDir, 'shaderpacks') },
+      ],
+    })
+  })
+  handle('playtime:snapshot', () => playtime.snapshot())
+  handle('playtime:reset', () => playtime.reset())
 
   // ---------- java ----------
   handle('java:detect', () => detectJava(settings.get().javaPath))
