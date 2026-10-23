@@ -6,7 +6,7 @@ export const APP_VERSION = '0.3.3'
 export const CLUB_NAME = '辽宁科技大学 甜浆果像素同好会'
 export const CLUB_NAME_SHORT = 'USTL Sweet Berry Pixel Club'
 export const APP_ID = 'club.ustl.berrylauncher'
-export const GITHUB_URL = 'https://github.com/USTL-SweetBerry/berrylauncher'
+export const GITHUB_URL = 'https://github.com/Lansheen3096/berrylauncher'
 export const LAUNCHER_BRAND = 'BerryLauncher'
 
 export const LOADER_LABELS: Record<LoaderKind, string> = {

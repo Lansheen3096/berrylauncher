@@ -13,7 +13,7 @@ import { getJson, writeFileAtomic } from './net'
 import { dataDir, ensureDir } from './paths'
 import { log } from './logger'
 
-const USER_AGENT = `BerryLauncher/${APP_VERSION} (USTL Sweet Berry Pixel Club; github.com/USTL-SweetBerry/berrylauncher)`
+const USER_AGENT = `BerryLauncher/${APP_VERSION} (USTL Sweet Berry Pixel Club; github.com/Lansheen3096/berrylauncher)`
 
 interface RawHit {
   project_id: string

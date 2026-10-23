@@ -5,7 +5,7 @@ import type { DownloadSource } from '../shared/types'
 import { ensureDir } from './paths'
 import { log } from './logger'
 
-export const USER_AGENT = `BerryLauncher/${APP_VERSION} (USTL Sweet Berry Pixel Club; +https://github.com/USTL-SweetBerry/berrylauncher)`
+export const USER_AGENT = `BerryLauncher/${APP_VERSION} (USTL Sweet Berry Pixel Club; +https://github.com/Lansheen3096/berrylauncher)`
 
 export function platformName(): 'windows' | 'osx' | 'linux' {
   if (process.platform === 'win32') return 'windows'

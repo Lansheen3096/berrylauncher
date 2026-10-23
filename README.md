@@ -126,7 +126,7 @@ Forge / NeoForge 使用官方 installer 的 `--installClient` 无头模式，自
 要求：Node.js ≥ 20、npm ≥ 10，以及一个可用的桌面会话。
 
 ```bash
-git clone https://github.com/USTL-SweetBerry/berrylauncher.git
+git clone https://github.com/Lansheen3096/berrylauncher.git
 cd berrylauncher
 npm install
 npm run dev          # Vite + Electron 热更新
