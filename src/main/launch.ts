@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { spawn, type ChildProcess } from 'node:child_process'
+import AdmZip from 'adm-zip'
 import type { Account, InstanceSettings, LaunchStatus, MojangVersionJson } from '../shared/types'
 import { APP_VERSION, LAUNCHER_BRAND } from '../shared/constants'
 import { assetsDir, ensureDir, instanceDir, versionJarPath } from './paths'
@@ -22,6 +23,21 @@ interface Session {
 
 interface Substitutions {
   [key: string]: string
+}
+
+/** Java major for the version of the compiled main class in a client jar. */
+function clientClassMajor(jarPath: string): number | null {
+  try {
+    const zip = new AdmZip(jarPath)
+    const entry = zip.getEntry('net/minecraft/client/main/Main.class')
+    if (!entry) return null
+    const data = entry.getData()
+    if (data.length < 8 || data[0] !== 0xca || data[1] !== 0xfe || data[2] !== 0xba || data[3] !== 0xbe) return null
+    const classMajor = data.readUInt16BE(6)
+    return classMajor >= 45 ? classMajor - 44 : null
+  } catch {
+    return null
+  }
 }
 
 function substitute(template: string, values: Substitutions): string {
@@ -91,11 +107,19 @@ export class LaunchService {
     }
     this.emit('launch:status', preparing)
 
+    const declaredJava = resolved.json.javaVersion?.majorVersion ?? 8
+    const requiredJava = Math.max(declaredJava, clientClassMajor(clientJar) ?? 0)
     const javaInfo = await this.java.ensure(
-      resolved.json.javaVersion?.majorVersion ?? 8,
+      requiredJava,
       resolved.json.javaVersion?.component,
       instanceSettings.javaPath || settings.javaPath,
     )
+    if (javaInfo.major < requiredJava) {
+      throw new Error(
+        `该版本需要 Java ${requiredJava}，当前选中的 Java ${javaInfo.major} 过低。请在实例设置中指定更新的 Java。`,
+      )
+    }
+    log.info('java selected', javaInfo.path, `major=${javaInfo.major}`, `required=${requiredJava}`)
 
     const memory = instanceSettings.memoryMB ?? settings.memoryMB
     const nativesDir = path.join(instanceDir(gameDir, id), 'natives')

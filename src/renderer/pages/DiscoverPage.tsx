@@ -22,13 +22,46 @@ function compactNumber(value: number): string {
 }
 
 function ProjectCard({ project, onOpen }: { project: ModrinthProject; onOpen: () => void }) {
+  const [iconSrc, setIconSrc] = useState(project.iconUrl ?? '')
+  const [iconFailed, setIconFailed] = useState(!project.iconUrl)
+  const [triedFallback, setTriedFallback] = useState(false)
+
+  useEffect(() => {
+    setIconSrc(project.iconUrl ?? '')
+    setIconFailed(!project.iconUrl)
+    setTriedFallback(false)
+  }, [project.id, project.iconUrl])
+
+  const onIconError = async () => {
+    if (!project.iconUrl || triedFallback) {
+      setIconFailed(true)
+      return
+    }
+    setTriedFallback(true)
+    const cached = await api.modrinth.icon(project.iconUrl).catch(() => null)
+    if (cached) {
+      setIconSrc(cached)
+      setIconFailed(false)
+    } else {
+      setIconFailed(true)
+    }
+  }
+
   return (
     <button className="mod-card" onClick={onOpen}>
       <div className="mod-card-head">
-        {project.iconUrl ? (
-          <img className="mod-icon" src={project.iconUrl} alt="" loading="lazy" />
+        {!iconFailed && iconSrc ? (
+          <img
+            className="mod-icon"
+            src={iconSrc}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            referrerPolicy="no-referrer"
+            onError={() => void onIconError()}
+          />
         ) : (
-          <span className="mod-icon mod-icon-empty">
+          <span className="mod-icon mod-icon-empty" aria-label={project.title}>
             <Package size={20} />
           </span>
         )}

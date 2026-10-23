@@ -397,6 +397,7 @@ export interface BerryAPI {
   }
   modrinth: {
     search(query: ModrinthSearchQuery): Promise<ModrinthSearchResult>
+    icon(url: string): Promise<string | null>
     versions(projectId: string, gameVersion?: string, loader?: string): Promise<ModrinthVersion[]>
   }
   mods: {

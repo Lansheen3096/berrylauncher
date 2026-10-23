@@ -70,6 +70,7 @@ const api: BerryAPI = {
   },
   modrinth: {
     search: (query) => call('modrinth:search', query),
+    icon: (url) => call('modrinth:icon', url),
     versions: (projectId, gameVersion, loader) => call('modrinth:versions', projectId, gameVersion, loader),
   },
   mods: {

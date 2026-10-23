@@ -1,14 +1,19 @@
+import fs from 'node:fs'
+import path from 'node:path'
+import crypto from 'node:crypto'
+import { net } from 'electron'
 import type {
   ModrinthProject,
   ModrinthSearchQuery,
   ModrinthSearchResult,
   ModrinthVersion,
 } from '../shared/types'
-import { MODRINTH_API } from '../shared/constants'
-import { getJson } from './net'
+import { APP_VERSION, MODRINTH_API } from '../shared/constants'
+import { getJson, writeFileAtomic } from './net'
+import { dataDir, ensureDir } from './paths'
 import { log } from './logger'
 
-const USER_AGENT = 'BerryLauncher/0.2.0 (USTL Sweet Berry Pixel Club; github.com/USTL-SweetBerry/berrylauncher)'
+const USER_AGENT = `BerryLauncher/${APP_VERSION} (USTL Sweet Berry Pixel Club; github.com/USTL-SweetBerry/berrylauncher)`
 
 interface RawHit {
   project_id: string
@@ -159,6 +164,82 @@ export class ModrinthService {
       headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
     })
     return mapVersion(data)
+  }
+
+  /**
+   * Fetch a Modrinth icon through Electron's network stack and cache it as a
+   * data URL. Some Windows networks can reach api.modrinth.com but fail to
+   * load cdn.modrinth.com directly; this gives the renderer a retry path and
+   * keeps working after the first successful fetch.
+   */
+  private readonly iconJobs = new Map<string, Promise<string | null>>()
+  async icon(rawUrl: string): Promise<string | null> {
+    if (!rawUrl) return null
+    const existing = this.iconJobs.get(rawUrl)
+    if (existing) return existing
+    const job = this.loadIcon(rawUrl).finally(() => this.iconJobs.delete(rawUrl))
+    this.iconJobs.set(rawUrl, job)
+    return job
+  }
+
+  private async loadIcon(rawUrl: string): Promise<string | null> {
+    let parsed: URL
+    try {
+      parsed = new URL(rawUrl)
+    } catch {
+      return null
+    }
+    const allowed =
+      parsed.protocol === 'https:' &&
+      (parsed.hostname === 'cdn.modrinth.com' ||
+        parsed.hostname.endsWith('.modrinth.com') ||
+        parsed.hostname === 'mod.mcimirror.top')
+    if (!allowed) return null
+
+    const key = crypto.createHash('sha1').update(rawUrl).digest('hex')
+    const dir = path.join(dataDir(), 'icons')
+    const file = path.join(dir, key)
+    const mimeFile = `${file}.mime`
+    try {
+      const mime = fs.readFileSync(mimeFile, 'utf8').trim()
+      const data = fs.readFileSync(file)
+      if (mime.startsWith('image/') && data.length > 0) {
+        return `data:${mime};base64,${data.toString('base64')}`
+      }
+    } catch {
+      /* no cache */
+    }
+
+    const candidates = [rawUrl]
+    if (parsed.hostname === 'cdn.modrinth.com') {
+      // Some networks can fetch png but fail on the webp CDN variant.
+      const png = /^\/data\/([^/]+)\//.exec(parsed.pathname)
+      if (png) candidates.push(`https://cdn.modrinth.com/data/${png[1]}/icon.png`)
+      candidates.push(`https://mod.mcimirror.top${parsed.pathname}${parsed.search}`)
+    }
+    for (const candidate of candidates) {
+      try {
+        const res = await net.fetch(candidate, {
+          headers: {
+            'User-Agent': USER_AGENT,
+            Accept: 'image/webp,image/png,image/jpeg,image/*',
+          },
+          signal: AbortSignal.timeout(15000),
+        })
+        if (!res.ok) continue
+        const mime = (res.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase()
+        if (!/^image\/(png|jpeg|webp|gif|avif)$/.test(mime)) continue
+        const buffer = Buffer.from(await res.arrayBuffer())
+        if (buffer.length === 0 || buffer.length > 3 * 1024 * 1024) continue
+        ensureDir(dir)
+        writeFileAtomic(file, buffer)
+        writeFileAtomic(mimeFile, mime)
+        return `data:${mime};base64,${buffer.toString('base64')}`
+      } catch (err) {
+        log.debug('icon fetch failed', candidate, err)
+      }
+    }
+    return null
   }
 }
 

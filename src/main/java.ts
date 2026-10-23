@@ -212,15 +212,26 @@ export class JavaService {
         ? path.dirname(path.dirname(preferredPath))
         : preferredPath
       const info = await describeJava(home, 'custom')
-      if (info) return info
-      throw new Error(`指定的 Java 不可用：${preferredPath}`)
+      if (info) {
+        if (info.major >= requiredMajor) return info
+        // A per-instance Java override must not silently launch a game that
+        // was compiled for a newer JDK (class file 69 = Java 25).
+        log.warn(
+          `configured Java ${info.major} is older than required ${requiredMajor}, ignoring override`,
+          preferredPath,
+        )
+      } else {
+        throw new Error(`指定的 Java 不可用：${preferredPath}`)
+      }
     }
 
     const all = await detectJava()
     const exact = all.find((j) => j.major === requiredMajor)
     if (exact) return exact
     if (requiredMajor >= 17) {
-      const newer = all.filter((j) => j.major > requiredMajor && j.major <= 25).sort((a, b) => a.major - b.major)[0]
+      const newer = all
+        .filter((j) => j.major > requiredMajor && j.major <= 30)
+        .sort((a, b) => a.major - b.major)[0]
       if (newer) return newer
     }
 
@@ -245,13 +256,45 @@ export class JavaService {
     const platform = all[key] ?? all.linux ?? all['windows-x64']
     if (!platform) throw new Error('无法获取 Java 运行时清单')
 
-    const candidates = [component, 'java-runtime-delta', 'java-runtime-gamma', 'jre-legacy'].filter(Boolean)
+    const versionMajor = (entry: RuntimeManifestEntry): number => {
+      const match = /^(\d+)/.exec(entry.version?.name ?? '')
+      return match ? Number(match[1]) : 0
+    }
+    const candidates = [
+      component,
+      'java-runtime-epsilon',
+      'java-runtime-delta',
+      'java-runtime-gamma',
+      'jre-legacy',
+    ].filter(Boolean) as string[]
     let entry: RuntimeManifestEntry | undefined
     for (const name of candidates) {
-      entry = platform[name]?.[0]
-      if (entry) {
+      const versions = platform[name]
+      if (!versions?.length) continue
+      const picked = expectMajor
+        ? versions.find((candidate) => versionMajor(candidate) >= expectMajor)
+        : versions[0]
+      if (picked) {
         component = name
+        entry = picked
         break
+      }
+    }
+    if (!entry && expectMajor) {
+      // The version JSON's component can lag behind the class-file version.
+      // Find a runtime whose declared version satisfies the requirement.
+      let best: { name: string; entry: RuntimeManifestEntry; major: number } | null = null
+      for (const [name, versions] of Object.entries(platform)) {
+        for (const candidate of versions ?? []) {
+          const major = versionMajor(candidate)
+          if (major >= expectMajor && (!best || major < best.major)) {
+            best = { name, entry: candidate, major }
+          }
+        }
+      }
+      if (best) {
+        component = best.name
+        entry = best.entry
       }
     }
     if (!entry) throw new Error(`当前平台没有可用的 Java 运行时：${component}`)
@@ -303,7 +346,7 @@ export class JavaService {
 
     const info = await describeJava(root, 'downloaded')
     if (!info) throw new Error(`Java 运行时安装后无法运行：${path.join(root, 'bin', javaExecutableName())}`)
-    if (expectMajor !== undefined && info.major !== expectMajor && info.major < expectMajor) {
+    if (expectMajor !== undefined && info.major < expectMajor) {
       throw new Error(`下载的 Java 版本不满足要求（需要 ${expectMajor}，实际 ${info.major}）`)
     }
     return info

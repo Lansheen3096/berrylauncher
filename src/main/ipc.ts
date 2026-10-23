@@ -244,6 +244,7 @@ export function registerIpc(): void {
 
   // ---------- modrinth / mods / modpacks ----------
   handle('modrinth:search', (query: ModrinthSearchQuery) => modrinth.search(query))
+  handle('modrinth:icon', (url: string) => modrinth.icon(requireString(url, 'url')))
   handle('modrinth:versions', (projectId: string, gameVersion?: string, loader?: string) =>
     modrinth.versions(projectId, gameVersion, loader),
   )
