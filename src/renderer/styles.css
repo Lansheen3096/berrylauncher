@@ -14,12 +14,12 @@
   --text: #e8f4ec;
   --text-dim: #a2b9ab;
   --text-mute: #70877a;
-  --accent: #3ddc84;
-  --accent-rgb: 61, 220, 132;
+  --accent: #2b8f5c;
+  --accent-rgb: 43, 143, 92;
   --accent-strong: #2fb96c;
   --accent-bright: #6ee7a1;
-  --accent-soft: rgba(61, 220, 132, 0.12);
-  --accent-line: rgba(61, 220, 132, 0.28);
+  --accent-soft: rgba(43, 143, 92, 0.12);
+  --accent-line: rgba(43, 143, 92, 0.28);
   --on-accent: #07130c;
   --danger: #f87171;
   --danger-soft: rgba(248, 113, 113, 0.12);
@@ -2955,4 +2955,32 @@ html[data-mode='light'] .segmented {
 
 .playtime-panel .panel-head h2 {
   font-size: 14px;
+}
+
+.berry-logo {
+  display: block;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+  flex-shrink: 0;
+}
+
+.berry-logo-plate {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  flex-shrink: 0;
+}
+
+.berry-logo-inside {
+  width: 84%;
+  height: 84%;
+}
+
+.berry-logo,
+.berry-logo-inside {
+  image-rendering: pixelated;
 }

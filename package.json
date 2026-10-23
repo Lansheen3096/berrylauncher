@@ -1,7 +1,7 @@
 {
   "name": "berrylauncher",
   "productName": "BerryLauncher",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "甜浆果启动器 - 辽宁科技大学甜浆果像素同好会开源 Minecraft 启动器",
   "main": "dist/main/index.js",
   "author": "USTL Sweet Berry Pixel Club",
@@ -14,7 +14,7 @@
     "build:main": "tsc -p tsconfig.main.json",
     "typecheck": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.renderer.json --noEmit",
     "start": "electron .",
-    "dist:win": "npm run build && electron-builder --win zip --x64 -c.win.signAndEditExecutable=false",
+    "dist:win": "npm run build && electron-builder --win zip --x64 -c.win.signAndEditExecutable=false && node scripts/patch-win-icon.cjs",
     "dist:linux": "npm run build && electron-builder --linux --x64",
     "e2e": "node scripts/e2e.mjs",
     "dist:win:native": "npm run build && electron-builder --win --x64",
@@ -38,6 +38,8 @@
     "react-dom": "^19.2.0",
     "typescript": "^5.9.3",
     "vite": "^7.1.9",
-    "zustand": "^5.0.8"
+    "zustand": "^5.0.8",
+    "resedit": "^1.7.2",
+    "pe-library": "^0.4.1"
   }
 }

@@ -8,7 +8,7 @@ export function hexToRgb(hex: string): [number, number, number] {
           .join('')
       : normalized
   const int = Number.parseInt(full, 16)
-  if (Number.isNaN(int)) return [61, 220, 132]
+  if (Number.isNaN(int)) return [43, 143, 92]
   return [(int >> 16) & 255, (int >> 8) & 255, int & 255]
 }
 

@@ -2,7 +2,7 @@ import type { LoaderKind } from './types'
 
 export const APP_NAME = 'BerryLauncher'
 export const APP_NAME_CN = '甜浆果启动器'
-export const APP_VERSION = '0.3.0'
+export const APP_VERSION = '0.3.1'
 export const CLUB_NAME = '辽宁科技大学 甜浆果像素同好会'
 export const CLUB_NAME_SHORT = 'USTL Sweet Berry Pixel Club'
 export const APP_ID = 'club.ustl.berrylauncher'
@@ -26,7 +26,7 @@ export const LOADER_COLORS: Record<LoaderKind, string> = {
 }
 
 export const ACCENT_PRESETS = [
-  { name: '森林绿', color: '#3ddc84' },
+  { name: '森林绿', color: '#2b8f5c' },
   { name: '薄荷青', color: '#2dd4bf' },
   { name: '樱花粉', color: '#f472b6' },
   { name: '晴空蓝', color: '#38bdf8' },

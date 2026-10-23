@@ -4,6 +4,7 @@ import type { InstanceSettings, InstanceSummary, LoaderKind, ModpackInfo, Mojang
 import { ensureDir, instanceDir, instancesDir, versionDir, versionJsonPath } from './paths'
 import { readJsonFile, writeFileAtomic } from './net'
 import type { VersionService } from './versions'
+import { settingsStore } from './settings'
 
 export interface InstanceMeta {
   id: string
@@ -141,8 +142,9 @@ export function listInstances(vs: VersionService): InstanceSummary[] {
     })()
     let modCount = 0
     try {
+      const baseDir = settingsStore.get().versionIsolation || meta?.pack ? instanceDir(gameDir, id) : gameDir
       modCount = fs
-        .readdirSync(path.join(instanceDir(gameDir, id), 'mods'))
+        .readdirSync(path.join(baseDir, 'mods'))
         .filter((file) => file.endsWith('.jar') || file.endsWith('.jar.disabled')).length
     } catch {
       /* no mods dir */

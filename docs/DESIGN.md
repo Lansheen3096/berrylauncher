@@ -26,9 +26,9 @@
 | `--text` | `#EDF2EE` | 主文字 |
 | `--text-dim` | `#A6B4AA` | 次要文字 |
 | `--text-mute` | `#738077` | 说明、元信息 |
-| `--accent` | `#3DDC84` | 主色 |
-| `--accent-bright` | `#5CE89A` | 主色高光 |
-| `--accent-strong` | `#2FBF70` | 主色阴影面 |
+| `--accent` | `#2B8F5C` | 主色（2026-10 压暗，去掉荧光感） |
+| `--accent-bright` | `#3FAE75` | 主色高光 |
+| `--accent-strong` | `#206A45` | 主色阴影面 |
 | `--on-accent` | `#06130B` | 绿底文字 |
 | `--danger` | `#F87171` | 危险 |
 
@@ -52,12 +52,12 @@
 所有强调色按钮：
 
 ```css
-background: linear-gradient(180deg, #63EDA3 0%, #3DDC84 52%, #2CBA6B 100%);
+background: linear-gradient(180deg, #42AD78 0%, #2B8F5C 52%, #206A45 100%);
 border: 1px solid rgba(255, 255, 255, 0.6);   /* 极细浅色描边 */
 box-shadow:
   inset 0 1px 0 rgba(255, 255, 255, 0.55),    /* 顶部高光 */
   inset 0 -1px 0 rgba(0, 0, 0, 0.14),         /* 底部暗边 */
-  0 3px 10px rgba(61, 220, 132, 0.22);        /* 落地阴影 */
+  0 3px 10px rgba(43, 143, 92, 0.22);        /* 落地阴影 */
 ```
 
 - 次级按钮：`surface-3 → surface-2` 渐变 + `--line-strong` 描边 + 顶部内高光。
@@ -65,6 +65,12 @@ box-shadow:
 - 危险按钮：红底 + 同样浅色描边。
 - hover：上浮 1px、阴影加深；active：下沉 1px、内阴影加强。
 - 图标按钮：圆形，hover 给 `surface-2` + 边框。
+
+## 图标
+
+- 应用图标与启动器内 logo 统一使用像素甜浆果原图（32×32 原图，最近邻放大）
+- 系统图标与界面内 logo 都使用原图的透明背景；界面内由 `.berry-logo-plate` 提供底板
+- 不再使用狐狸插画或旧像素草莓
 
 ## 3. 布局
 

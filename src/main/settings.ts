@@ -8,7 +8,7 @@ import { log } from './logger'
 
 function defaults(): Settings {
   return {
-    theme: { accent: '#3ddc84', mode: 'dark' },
+    theme: { accent: '#2b8f5c', mode: 'dark' },
     gameDir: defaultGameDir(),
     downloadSource: 'official',
     concurrency: 12,
@@ -25,7 +25,13 @@ function defaults(): Settings {
 function sanitize(input: Settings): Settings {
   const memory = Math.round(Number(input.memoryMB) || DEFAULT_MEMORY)
   const concurrency = Math.round(Number(input.concurrency) || 12)
-  const accent = /^#[0-9a-f]{6}$/i.test(input.theme?.accent ?? '') ? input.theme.accent : '#3ddc84'
+  const rawAccent = input.theme?.accent
+  const accent =
+    !rawAccent || rawAccent.toLowerCase() === '#3ddc84'
+      ? '#2b8f5c'
+      : /^#[0-9a-f]{6}$/i.test(rawAccent)
+        ? rawAccent
+        : '#2b8f5c'
   return {
     ...input,
     theme: { accent, mode: input.theme?.mode === 'light' ? 'light' : 'dark' },

@@ -1,11 +1,11 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { BMCLAPI } from '../shared/constants'
+import { APP_VERSION, BMCLAPI } from '../shared/constants'
 import type { DownloadSource } from '../shared/types'
 import { ensureDir } from './paths'
 import { log } from './logger'
 
-export const USER_AGENT = 'BerryLauncher/0.1.0 (USTL Sweet Berry Pixel Club; +https://github.com/USTL-SweetBerry/berrylauncher)'
+export const USER_AGENT = `BerryLauncher/${APP_VERSION} (USTL Sweet Berry Pixel Club; +https://github.com/USTL-SweetBerry/berrylauncher)`
 
 export function platformName(): 'windows' | 'osx' | 'linux' {
   if (process.platform === 'win32') return 'windows'

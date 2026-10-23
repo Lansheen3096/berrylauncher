@@ -37,7 +37,7 @@ linux:
     - target: AppImage
       arch: [x64]
 mac:
-  icon: build/icon.png
+  icon: build/icon.icns
   category: public.app-category.games
   target:
     - target: dmg

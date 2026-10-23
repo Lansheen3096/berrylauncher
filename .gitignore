@@ -29,3 +29,8 @@ release/
 .funcdata/
 .storetest/
 .testsupport*/
+
+.demo/
+.dltest/
+.verify/
+.build/

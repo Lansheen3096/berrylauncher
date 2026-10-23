@@ -8,7 +8,7 @@
 
 原生支持 Minecraft 全版本与 Fabric / Quilt / Forge / NeoForge；内置 Modrinth 模组/整合包搜索、MUA 外置登录，绿色主题、离线即用、无广告无捆绑。
 
-[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0--or--later-3ddc84.svg)](LICENSE)
+[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0--or--later-2b8f5c.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-2f8f5b.svg)](#平台支持)
 [![Electron](https://img.shields.io/badge/Electron-44-47848F.svg)](https://www.electronjs.org/)
 
@@ -44,6 +44,11 @@ BerryLauncher 是一个面向玩家、也面向同好会内部使用的 Minecraf
 
 Forge / NeoForge 使用官方 installer 的 `--installClient` 无头模式，自动补齐处理器、映射与依赖，避免自行复刻 Forge 的处理器链导致版本兼容问题。
 
+### 外观
+
+- 强调色压暗为森林绿 `#2B8F5C`，保留胶囊按钮和发丝描边，去掉荧光感
+- 应用图标、标题栏、启动画面、关于页统一为像素甜浆果原图
+
 ### 版本隔离与资源实体库
 
 - 设置里的「版本隔离」开关默认开启：每个实例独立 `mods / saves / config`；关闭后共享根目录，整合包实例始终强制隔离。
@@ -55,6 +60,12 @@ Forge / NeoForge 使用官方 installer 的 `--installClient` 无头模式，自
 
 - 独立 `playtime.json` 账本，20 秒心跳，启动器崩溃后按最后心跳恢复，不再只在退出时记一笔。
 - 主页显示总时长和按 MC 版本的柱状统计；实例卡保留最近游玩时间。
+
+### 下载
+
+- 单文件超过 4 MB 自动分段，最多 4 线程并行；服务器不支持 Range 时自动回退单流
+- 每个分段有独立 `.berry-part-*`，中断/退出后按已落盘字节续传，合并前统一校验 SHA-1
+- 小文件保留 `.berry-part` 单流续传；切换下载源后仍按目标大小与 SHA-1 校验
 
 ### 资源库（Modrinth）
 
@@ -227,6 +238,7 @@ Client ID 不是密钥，可安全保存在本地配置文件中；令牌仅存�
 - [ ] 控制台日志搜索与高度拖拽
 - [x] 版本隔离、资源实体库与自动瘦身
 - [x] 游玩时长统计（实例 / MC 版本 / 总计）
+- [x] 下载断点续传与单文件多线程
 - [ ] 自动更新与增量下载
 - [ ] 多语言（当前为简体中文）
 - [ ] 皮肤预览与正版服务器状态
